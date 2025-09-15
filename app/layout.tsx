@@ -1,16 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Figtree } from "next/font/google"
 import { GeistMono } from "geist/font/mono"
 import { Instrument_Serif } from "next/font/google"
 import "./globals.css"
-
-const figtree = Figtree({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-figtree",
-  display: "swap",
-})
 
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
@@ -36,14 +28,12 @@ export default function RootLayout({
       <head>
         <style>{`
 html {
-  font-family: ${figtree.style.fontFamily};
-  --font-sans: ${figtree.variable};
   --font-mono: ${GeistMono.variable};
   --font-instrument-serif: ${instrumentSerif.variable};
 }
         `}</style>
       </head>
-      <body className={`${figtree.variable} ${instrumentSerif.variable}`}>{children}</body>
+      <body className={`${instrumentSerif.variable}`}>{children}</body>
     </html>
   )
 }

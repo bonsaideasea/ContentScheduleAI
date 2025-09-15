@@ -376,7 +376,11 @@ export default function CreatePage() {
                   variant={selectedPlatform === platform ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setSelectedPlatform(platform)}
-                  className={selectedPlatform === platform ? "bg-white/10" : ""}
+                  className={`transition-all duration-200 relative ${
+                    selectedPlatform === platform 
+                      ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-500 shadow-lg ring-2 ring-purple-500/30 scale-105" 
+                      : "bg-transparent hover:bg-white/5 text-gray-300 hover:text-white border-white/10 hover:scale-105"
+                  }`}
                 >
                   {platform}
                 </Button>
@@ -402,9 +406,14 @@ export default function CreatePage() {
                     <ImageIcon className="w-4 h-4 mr-1" />
                     Add Media
                   </Button>
-                  <span className="text-sm text-gray-400">
-                    {postContent.length}/{characterLimits[selectedPlatform]} characters
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+                      {selectedPlatform}
+                    </Badge>
+                    <span className="text-sm text-gray-400">
+                      {postContent.length}/{characterLimits[selectedPlatform]} characters
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
