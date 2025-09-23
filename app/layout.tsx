@@ -1,16 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { GeistMono } from "geist/font/mono"
-import { Instrument_Serif } from "next/font/google"
 import "./globals.css"
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-instrument-serif",
-  display: "swap",
-})
 
 export const metadata: Metadata = {
   title: "v0 App",
@@ -29,11 +20,11 @@ export default function RootLayout({
         <style>{`
 html {
   --font-mono: ${GeistMono.variable};
-  --font-instrument-serif: ${instrumentSerif.variable};
 }
         `}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Marchen&display=swap" rel="stylesheet" />
       </head>
-      <body className={`${instrumentSerif.variable}`}>{children}</body>
+      <body>{children}</body>
     </html>
   )
 }

@@ -4,7 +4,7 @@ import Link from "next/link"
 
 export default function HeroContent() {
   return (
-    <main className="absolute bottom-8 left-8 z-20 max-w-lg">
+    <main className="absolute bottom-8 left-8 z-20 max-w-xlg">
       <div className="text-left">
         <div
           className="inline-flex items-center px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm mb-4 relative border border-white/10"
@@ -18,9 +18,10 @@ export default function HeroContent() {
 
         {/* Main Heading */}
         <h1 className="text-5xl md:text-6xl md:leading-16 tracking-tight font-light text-white mb-4">
-          <span className="font-medium italic instrument">Automate</span> Your
+          <span className="font-light tracking-tight text-white">Revolutionized Marketing <br/>
+          for Social Media</span>
           <br />
-          <span className="font-light tracking-tight text-white">Marketing</span>
+          <span className="font-small italic instrument">Powered by </span><span className="font-medium italic instrument">AI</span>
         </h1>
 
         {/* Description */}

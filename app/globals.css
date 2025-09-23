@@ -38,7 +38,7 @@
   --sidebar-accent-foreground: oklch(0 0 0); /* Black text on sidebar accent */
   --sidebar-border: oklch(1 0 0); /* White sidebar borders */
   --sidebar-ring: oklch(0.65 0.2 270); /* Violet for sidebar focus */
-  --font-instrument-serif: "Instrument Serif", serif; /* Instrument Serif font family configuration */
+  --font-instrument-serif: "Noto Sans Marchen", sans-serif; /* Global font set to Noto Sans Marchen */
 }
 
 .dark {
@@ -75,7 +75,7 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.3 0 0);
   --sidebar-ring: oklch(0.7 0.25 270);
-  --font-instrument-serif: "Instrument Serif", serif; /* Instrument Serif font family configuration */
+  --font-instrument-serif: "Noto Sans Marchen", sans-serif; /* Global font set to Noto Sans Marchen */
 }
 
 @theme inline {
@@ -124,6 +124,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "Noto Sans Marchen", sans-serif;
   }
 }
 
