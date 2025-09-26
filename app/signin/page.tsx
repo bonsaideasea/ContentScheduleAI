@@ -13,7 +13,7 @@ export default function SignInPage() {
   const [rememberMe, setRememberMe] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[#0A0C18] flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[#1E1E23] flex items-center justify-center px-4 py-10">
       <Card className="w-full max-w-sm bg-white p-6 rounded-lg shadow-lg">
         {/* Logo */}
         <div className="flex justify-center mb-6">

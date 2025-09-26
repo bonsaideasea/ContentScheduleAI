@@ -44,6 +44,10 @@ export default function CreatePage() {
   const [showClonePicker, setShowClonePicker] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const clonePickerRef = useRef<HTMLDivElement | null>(null)
+  // Sidebar collapse/expand state controlled by hover
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  // Source modal (full-screen overlay) state
+  const [showSourceModal, setShowSourceModal] = useState(false)
   // Initialize active section from URL (?section=...)
   useEffect(() => {
     const s = searchParams.get("section")
@@ -67,6 +71,7 @@ export default function CreatePage() {
   const [timeAmPm, setTimeAmPm] = useState<'AM' | 'PM'>("AM")
   const calendarRef = useRef<HTMLDivElement | null>(null)
   const publishModalRef = useRef<HTMLDivElement | null>(null)
+  const calendarAnchorRef = useRef<HTMLDivElement | null>(null)
   const [isScheduleFocused, setIsScheduleFocused] = useState(false)
   const accountDropdownRef = useRef<HTMLDivElement | null>(null)
   // Chat model selector state and refs
@@ -81,6 +86,37 @@ export default function CreatePage() {
     setSelectedTime(`${hh}:${mm} ${timeAmPm}`)
     setShowCalendar(false)
   }
+
+  // Initialize default time to user's local current time on mount
+  useEffect(() => {
+    const now = new Date()
+    const hours24 = now.getHours()
+    const minutes = now.getMinutes()
+    const ampm: 'AM' | 'PM' = hours24 >= 12 ? 'PM' : 'AM'
+    const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12
+    const hh = String(hours12).padStart(2, '0')
+    const mm = String(minutes).padStart(2, '0')
+    setTimeHour(hh)
+    setTimeMinute(mm)
+    setTimeAmPm(ampm)
+    setSelectedTime(`${hh}:${mm} ${ampm}`)
+  }, [])
+
+  // When opening the calendar via "Chọn thời gian", ensure time defaults to user's current local time
+  useEffect(() => {
+    if (!showCalendar || publishTime !== 'pick a time') return
+    const now = new Date()
+    const hours24 = now.getHours()
+    const minutes = now.getMinutes()
+    const ampm: 'AM' | 'PM' = hours24 >= 12 ? 'PM' : 'AM'
+    const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12
+    const hh = String(hours12).padStart(2, '0')
+    const mm = String(minutes).padStart(2, '0')
+    setTimeHour(hh)
+    setTimeMinute(mm)
+    setTimeAmPm(ampm)
+    setSelectedTime(`${hh}:${mm} ${ampm}`)
+  }, [showCalendar, publishTime])
 
   // Close calendar when clicking outside the calendar popover
   useEffect(() => {
@@ -114,6 +150,36 @@ export default function CreatePage() {
       document.removeEventListener('keydown', handleKey)
     }
   }, [showPublishModal])
+
+  // Ensure the calendar popup is fully visible by computing a fixed screen position
+  const [calendarPos, setCalendarPos] = useState<{ top: number; left: number } | null>(null)
+  useEffect(() => {
+    if (!(showCalendar && publishTime === 'pick a time')) return
+    // Wait a tick so the calendar renders and has dimensions
+    const id = window.setTimeout(() => {
+      const anchor = calendarAnchorRef.current
+      const popup = calendarRef.current
+      if (!anchor || !popup) return
+      const anchorRect = anchor.getBoundingClientRect()
+      const popupRect = popup.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+
+      // Prefer to the right of the anchor; if it overflows, place to the left
+      const gap = 12
+      let left = anchorRect.right + gap
+      if (left + popupRect.width > viewportWidth - 8) {
+        left = Math.max(8, anchorRect.left - popupRect.width - gap)
+      }
+      // Vertically align with anchor top; clamp to viewport
+      let top = anchorRect.top
+      const maxTop = viewportHeight - popupRect.height - 8
+      if (top > maxTop) top = Math.max(8, maxTop)
+      if (top < 8) top = 8
+      setCalendarPos({ top, left })
+    }, 0)
+    return () => window.clearTimeout(id)
+  }, [showCalendar, publishTime])
 
   // Close model menu on outside click
   useEffect(() => {
@@ -220,7 +286,8 @@ export default function CreatePage() {
     console.log('Drag start triggered for day:', dayNum, 'note:', noteIndex)
     const event = calendarEvents[dayNum]?.[noteIndex]
     console.log('Event data:', event)
-    if (event && (event.noteType === 'yellow' || event.noteType === 'green')) {
+    // Allow dragging only for to-be-published notes (yellow or red). Published (green) is locked.
+    if (event && (event.noteType === 'yellow' || event.noteType === 'red')) {
       console.log('Note is draggable, setting up drag data')
       const eventData = {
         sourceDay: dayNum,
@@ -232,7 +299,7 @@ export default function CreatePage() {
       // Prevent click event during drag
       e.currentTarget.style.pointerEvents = 'none'
     } else {
-      console.log('Note is not draggable (red note)')
+    console.log('Note is not draggable (published note)')
       e.preventDefault() // Prevent dragging red notes
     }
   }
@@ -261,7 +328,7 @@ export default function CreatePage() {
     
     // Only allow drops on today or future dates (same month and year)
     if (dayNum >= todayDay && currentMonth === todayMonth && currentYear === todayYear) {
-      // If dragging an existing calendar note (yellow/green)
+      // If dragging an existing calendar note (yellow/red)
       if (draggedEventData) {
         try {
           const eventData = JSON.parse(draggedEventData)
@@ -579,6 +646,8 @@ export default function CreatePage() {
   // Ref to close the Add Post dropdown on outside click
   const postPickerRef = useRef<HTMLDivElement | null>(null)
   const postPickerHideTimerRef = useRef<number | null>(null)
+  // Track whether the Add Post button should appear active (pink) while picker is open
+  const [isAddPostActive, setIsAddPostActive] = useState(false)
 
   function clearPostPickerHideTimer() {
     if (postPickerHideTimerRef.current) {
@@ -600,7 +669,41 @@ export default function CreatePage() {
     clearPostPickerHideTimer()
     setShowPostPicker(true)
     setIsPostPickerVisible(true)
+    setIsAddPostActive(true)
   }
+
+  // Close the post picker with the existing fade-out delay and deactivate Add Post button
+  function closePostPickerWithDelay() {
+    setIsPostPickerVisible(false)
+    // Hide the picker after fade animation completes
+    window.setTimeout(() => {
+      setShowPostPicker(false)
+      setIsAddPostActive(false)
+    }, 80)
+  }
+
+  // Close on outside click or Escape key
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      if (!showPostPicker) return
+      const target = event.target as Node
+      if (postPickerRef.current && !postPickerRef.current.contains(target)) {
+        closePostPickerWithDelay()
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!showPostPicker) return
+      if (event.key === 'Escape') {
+        closePostPickerWithDelay()
+      }
+    }
+    document.addEventListener('mousedown', handleDocumentClick)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showPostPicker])
 
   function clearSourcePickerHideTimer() {
     if (sourcePickerHideTimerRef.current) {
@@ -813,7 +916,7 @@ export default function CreatePage() {
       return
     }
 
-    // If scheduled for later, create a green calendar note
+    // If scheduled for later, create a RED calendar note (to-be-published)
     if (publishTime === "pick a time" && selectedDate && selectedTime) {
       const scheduledDate = new Date(selectedDate)
       const dayNum = scheduledDate.getDate()
@@ -823,7 +926,7 @@ export default function CreatePage() {
         platform: selectedPlatform,
         time: selectedTime,
         status: `scheduled for ${selectedTime}`,
-        noteType: 'green' as const
+        noteType: 'red' as const
       }
       
       // Add to calendar events
@@ -853,7 +956,7 @@ export default function CreatePage() {
       console.log("Adding to published posts:", newPublishedPost)
       setPublishedPosts(prev => [...prev, newPublishedPost])
       
-      // Create red calendar note for today (successfully posted)
+      // Create GREEN calendar note for today (successfully posted)
       const today = new Date().getDate()
       const currentTime = new Date().toLocaleTimeString('en-US', { 
         hour: '2-digit', 
@@ -865,7 +968,7 @@ export default function CreatePage() {
                   platform: selectedPlatform,
                   time: currentTime,
                   status: `posted ${currentTime}`,
-                  noteType: 'red' as const
+                  noteType: 'green' as const
                 }
                 
                 console.log("Creating red calendar note with platform:", selectedPlatform)
@@ -1136,17 +1239,17 @@ export default function CreatePage() {
                       console.log("Icon path:", event.platform === 'TikTok' ? '/tiktok.png' : 'not tiktok')
                       return {
                       platform: event.platform,
-                      label: event.noteType === 'red' ? `posted ${event.time}` :
+                      label: event.noteType === 'green' ? `posted ${event.time}` :
                              event.noteType === 'yellow' ? 'not scheduled' :
-                             event.noteType === 'green' ? `scheduled for ${event.time}` :
+                             event.noteType === 'red' ? `scheduled for ${event.time}` :
                              `${event.status} ${event.time}`,
-                      color: event.noteType === 'red' ? 'bg-[#FF4F4F]/20 border-[#FF4F4F]/40' :
+                      color: event.noteType === 'green' ? 'bg-[#8AE177]/20 border-[#8AE177]/40' :
                              event.noteType === 'yellow' ? 'bg-[#FACD5B]/20 border-[#FACD5B]/40' :
-                             event.noteType === 'green' ? 'bg-[#8AE177]/20 border-[#8AE177]/40' :
+                             event.noteType === 'red' ? 'bg-[#FF4F4F]/20 border-[#FF4F4F]/40' :
                              'bg-white/10 border-white/20',
-                      text: event.noteType === 'red' ? 'text-[#FF4F4F]' :
+                      text: event.noteType === 'green' ? 'text-[#8AE177]' :
                             event.noteType === 'yellow' ? 'text-[#FACD5B]' :
-                            event.noteType === 'green' ? 'text-[#8AE177]' :
+                            event.noteType === 'red' ? 'text-[#FF4F4F]' :
                             'text-white/80',
                       icon: event.platform === 'Instagram' ? '/instagram.png' :
                             event.platform === 'Facebook' ? '/fb.svg' :
@@ -1252,7 +1355,7 @@ export default function CreatePage() {
             {showNotePopup && selectedNote && (() => {
               const { dayNum, noteIndex } = selectedNote
               const note = calendarEvents[dayNum]?.[noteIndex]
-              const isRedNote = note?.noteType === 'red'
+              const isRedNote = note?.noteType === 'red' // now means to-be-published
               
         return (
                 <div 
@@ -1273,7 +1376,7 @@ export default function CreatePage() {
 
                   <div className="flex items-center gap-4 mt-[8px]">
                     {isRedNote ? (
-                      /* Red Note - Only View Icon */
+                      /* To-be-published (red) - Only View Icon disabled */
                       <button
                         onClick={handleRedNoteView}
                         className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded"
@@ -1733,12 +1836,12 @@ export default function CreatePage() {
                 onMouseEnter={handlePostPickerMouseEnter}
                 onMouseLeave={startPostPickerHideTimer}
               >
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className={`${isAddPostActive ? 'bg-[#E33265] text-white hover:bg-[#c52b57]' : ''}`}>
                   <PlusIcon className="w-4 h-4 mr-1" /> Add Post
               </Button>
                 {showPostPicker && (
                   <div 
-                    className={`absolute z-20 mt-2 w-[13.75rem] bg-[#0F111A] border border-white/10 rounded-lg shadow-lg p-3 transition-opacity duration-75 ${
+                    className={`absolute z-20 mt-2 w-[13.75rem] bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] p-3 transition-opacity duration-75 ${
                       isPostPickerVisible ? 'opacity-100' : 'opacity-0'
                     }`}
                   >
@@ -1782,7 +1885,7 @@ export default function CreatePage() {
             </div>
 
             {/* Editor for the selected tab or empty state */}
-            <Card className="bg-gray-900/50 border-white/10 p-6 flex-1 flex flex-col">
+            <Card className="bg-[#2A2A30] border-[#3A3A42] p-6 flex-1 flex flex-col">
               {selectedPostId === 0 || openPosts.length === 0 ? (
                 /* Empty state when no posts are open */
                 <div className="flex-1 flex items-center justify-center">
@@ -1790,6 +1893,7 @@ export default function CreatePage() {
                     onClick={() => {
                       setShowPostPicker(true)
                       setIsPostPickerVisible(true)
+                      setIsAddPostActive(true)
                     }}
                     className="bg-[#E33265] hover:bg-[#c52b57] text-white"
                   >
@@ -1804,7 +1908,7 @@ export default function CreatePage() {
                     placeholder={`Bạn muốn chia sẻ gì trên ${openPosts.find((p) => p.id === selectedPostId)?.type || "bài viết"}?`}
                     value={postContents[selectedPostId] || ""}
                     onChange={(e) => setPostContents({ ...postContents, [selectedPostId]: e.target.value })}
-                    className="h-full bg-transparent border-none resize-none text-white placeholder:text-gray-500 focus:ring-0 pr-20 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+                    className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] resize-none text-white placeholder:text-gray-400 focus:ring-0 focus:border-[#2A2A30] p-[10px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
                   />
                   {/* Character count overlay inside textarea area */}
                   <div className="pointer-events-none absolute right-0 bottom-0 translate-y-full mt-1 pt-[12px] text-xs text-gray-400">
@@ -1841,7 +1945,7 @@ export default function CreatePage() {
                       Nhân bản
                   </Button>
                     {showClonePicker && (
-                      <div className="absolute z-20 bottom-full mb-2 right-0 w-[13.75rem] bg-[#0F111A] border border-white/10 rounded-lg shadow-lg p-3" onMouseEnter={() => setShowClonePicker(true)} onMouseLeave={() => setShowClonePicker(false)}>
+                      <div className="absolute z-20 bottom-full mb-2 right-0 w-[13.75rem] bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] p-3" onMouseEnter={() => setShowClonePicker(true)} onMouseLeave={() => setShowClonePicker(false)}>
                         <div className="space-y-1">
                           {[
                             { name: "Twitter", icon: "/x.png" },
@@ -1934,82 +2038,85 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="h-screen bg-[#0A0C18] text-white">
-      <div className="flex h-screen">
-        {/* Left Sidebar */}
-        <div className="w-64 border-r border-white/10 p-4 pt-[30px]">
+    <div className="h-screen bg-[#1E1E23] text-white">
+      <div className="relative flex h-screen">
+        {/* Left Sidebar Overlay + Spacer so main layout doesn't shift */}
+        <div className="w-16" />
+        <div 
+          className={`${isSidebarOpen ? 'w-64' : 'w-16'} transition-[width] duration-150 ease-out border-r border-white/10 p-4 pt-[30px] absolute inset-y-0 left-0 z-20 bg-[#1E1E23]`}
+          onMouseEnter={() => setIsSidebarOpen(true)}
+          onMouseLeave={() => setIsSidebarOpen(false)}
+        >
           <nav className="space-y-2">
             <Button
               variant={activeSection === "create" ? "secondary" : "ghost"}
-              className={`w-full justify-start ${
-                activeSection === "create"
-                  ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
-                  : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
+                activeSection === "create" ? "bg-purple-500/20 border-purple-500/30" : ""
               }`}
               onClick={() => { setActiveSection("create"); window.history.pushState(null, "", "/create") }}
             >
               <PlusIcon className="w-4 h-4 mr-2" />
-              Tạo bài viết
+              {isSidebarOpen && <span>Tạo bài viết</span>}
             </Button>
             <Button
               variant="ghost"
-              className={`w-full justify-start text-left ${
-                activeSection === "calendar" ? "text-purple-300 bg-purple-500/10" : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-left text-[#F5F5F7] ${
+                activeSection === "calendar" ? "bg-purple-500/10" : ""
               }`}
               onClick={() => { setActiveSection("calendar"); window.history.pushState(null, "", "/lich") }}
             >
               <CalendarIcon className="w-4 h-4 mr-2" />
-              Lịch
+              {isSidebarOpen && <span>Lịch</span>}
             </Button>
             <Button
               variant="ghost"
-              className={`w-full justify-start ${
-                activeSection === "drafts" ? "text-purple-300 bg-purple-500/10" : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
+                activeSection === "drafts" ? "bg-purple-500/10" : ""
               }`}
               onClick={() => { setActiveSection("drafts"); window.history.pushState(null, "", "/ban-nhap") }}
             >
               <span className="w-4 h-4 mr-2">📝</span>
-              Bản nháp
+              {isSidebarOpen && <span>Bản nháp</span>}
             </Button>
             <Button
               variant="ghost"
-              className={`w-full justify-start ${
-                activeSection === "published" ? "text-purple-300 bg-purple-500/10" : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
+                activeSection === "published" ? "bg-purple-500/10" : ""
               }`}
               onClick={() => { setActiveSection("published"); window.history.pushState(null, "", "/bai-da-dang") }}
             >
               <SendIcon className="w-4 h-4 mr-2" />
-              Bài đã đăng
+              {isSidebarOpen && <span>Bài đã đăng</span>}
             </Button>
             <Button
               variant="ghost"
-              className={`w-full justify-start ${
-                activeSection === "failed" ? "text-purple-300 bg-purple-500/10" : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
+                activeSection === "failed" ? "bg-purple-500/10" : ""
               }`}
               onClick={() => { setActiveSection("failed"); window.history.pushState(null, "", "/bai-loi") }}
             >
               <span className="w-4 h-4 mr-2 text-red-400">⚠</span>
-              Bài lỗi
+              {isSidebarOpen && <span>Bài lỗi</span>}
             </Button>
             <Button
               variant="ghost"
-              className={`w-full justify-start ${
-                activeSection === "videos" ? "text-purple-300 bg-purple-500/10" : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
+                activeSection === "videos" ? "bg-purple-500/10" : ""
               }`}
               onClick={() => { setActiveSection("videos"); window.history.pushState(null, "", "/videos") }}
             >
               <VideoIcon className="w-4 h-4 mr-2" />
-              Video
+              {isSidebarOpen && <span>Video</span>}
             </Button>
             <Button
               variant="ghost"
-              className={`w-full justify-start ${
-                activeSection === "api" ? "text-purple-300 bg-purple-500/10" : "text-gray-400 hover:text-white"
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
+                activeSection === "api" ? "bg-purple-500/10" : ""
               }`}
               onClick={() => { setActiveSection("api"); window.history.pushState(null, "", "/api-dashboard") }}
             >
               <span className="w-4 h-4 mr-2">⚡</span>
-              Bảng điều khiển API
+              {isSidebarOpen && <span>Bảng điều khiển API</span>}
             </Button>
           </nav>
 
@@ -2017,102 +2124,101 @@ export default function CreatePage() {
           <div className="mb-4">
             <Button
               variant="ghost"
-              className={`w-full justify-start ${activeSection === 'settings' ? 'text-purple-300 bg-purple-500/10' : 'text-gray-400 hover:text-white'}`}
+              className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${activeSection === 'settings' ? 'bg-purple-500/10' : ''}`}
               onClick={() => { setActiveSection('settings'); window.history.pushState(null, '', '/settings') }}
             >
               <SettingsIcon className="w-4 h-4 mr-2" />
-              Cài đặt
+              {isSidebarOpen && <span>Cài đặt</span>}
             </Button>
           </div>
 
-          {/* Sources Section (hover to show panel) */}
-          <div
-            onMouseEnter={handleSourcePickerMouseEnter}
-            onMouseLeave={startSourcePickerHideTimer}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm text-gray-300">Nguồn</h4>
+        </div>
+
+        {/* Sources Column moved out of sidebar */}
+        <div
+          className="w-64 border-r border-white/10 p-4 pt-[30px]"
+        >
+          <div className="flex items-center justify-between mb-2">
             <Button
-                size="sm"
+              size="sm"
               variant="ghost"
-                className="text-xs text-gray-200 hover:text-white px-2 py-1"
-                // Hover reveals the panel; click not required
-              >
-                + Thêm nguồn
-              </Button>
-            </div>
-
-            {isAddingSource && (
-              <div 
-                className={`border border-white/10 rounded-md p-3 bg-gray-900/50 transition-opacity duration-75 ${
-                  isSourcePickerVisible ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                {/* Source type selector */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {[
-                    { key: "text", label: "Text" },
-                    { key: "article", label: "Article Link" },
-                    { key: "youtube", label: "YouTube" },
-                    { key: "tiktok", label: "TikTok" },
-                    { key: "pdf", label: "PDF" },
-                    { key: "audio", label: "Audio" },
-                  ].map((t) => (
-                    <Button
-                      key={t.key}
-                      size="sm"
-                      variant={selectedSourceType === (t.key as any) ? "secondary" : "ghost"}
-                      className={selectedSourceType === (t.key as any) ? "bg-white/10" : ""}
-                      onClick={() => setSelectedSourceType(t.key as any)}
-                    >
-                      {t.label}
+              className="text-xs text-gray-200 hover:text-white px-2 py-1"
+              onClick={() => setShowSourceModal(true)}
+            >
+              + Thêm nguồn
             </Button>
-                  ))}
-                </div>
+          </div>
 
-                {/* Placeholder input area depending on type */}
-                <div className="space-y-2">
-                  {selectedSourceType === "text" && (
-                    <Textarea placeholder="Paste or type your text source..." className="bg-gray-900/50 border-white/10" />
-                  )}
-                  {selectedSourceType !== "text" && (
-                    <Input
-                      placeholder={
-                        selectedSourceType === "article"
-                          ? "Paste article URL..."
-                          : selectedSourceType === "youtube"
-                          ? "Paste YouTube link..."
-                          : selectedSourceType === "tiktok"
-                          ? "Paste TikTok link..."
-                          : selectedSourceType === "pdf"
-                          ? "Paste PDF link..."
-                          : "Paste audio link..."
-                      }
-                      className="bg-gray-900/50 border-white/10"
-                    />
-                  )}
+          {isAddingSource && (
+            <div 
+              className={`border border-white/10 rounded-md p-3 bg-gray-900/50 transition-opacity duration-75 ${
+                isSourcePickerVisible ? 'opacity-100' : 'opacity-0'
+              }`}
+              onMouseEnter={handleSourcePickerMouseEnter}
+              onMouseLeave={startSourcePickerHideTimer}
+            >
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {[
+                  { key: "text", label: "Text" },
+                  { key: "article", label: "Article Link" },
+                  { key: "youtube", label: "YouTube" },
+                  { key: "tiktok", label: "TikTok" },
+                  { key: "pdf", label: "PDF" },
+                  { key: "audio", label: "Audio" },
+                ].map((t) => (
+                  <Button
+                    key={t.key}
+                    size="sm"
+                    variant={selectedSourceType === (t.key as any) ? "secondary" : "ghost"}
+                    className={selectedSourceType === (t.key as any) ? "bg-white/10" : ""}
+                    onClick={() => setSelectedSourceType(t.key as any)}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
 
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="bg-[#E33265] hover:bg-[#c52b57]">Save</Button>
-                    <Button size="sm" variant="outline" className="bg-transparent" onClick={() => setIsAddingSource(false)}>
-                      Cancel
-            </Button>
-                  </div>
+              <div className="space-y-2">
+                {selectedSourceType === "text" && (
+                  <Textarea placeholder="Paste or type your text source..." className="bg-gray-900/50 border-white/10" />
+                )}
+                {selectedSourceType !== "text" && (
+                  <Input
+                    placeholder={
+                      selectedSourceType === "article"
+                        ? "Paste article URL..."
+                        : selectedSourceType === "youtube"
+                        ? "Paste YouTube link..."
+                        : selectedSourceType === "tiktok"
+                        ? "Paste TikTok link..."
+                        : selectedSourceType === "pdf"
+                        ? "Paste PDF link..."
+                        : "Paste audio link..."
+                    }
+                    className="bg-gray-900/50 border-white/10"
+                  />
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" className="bg-[#E33265] hover:bg-[#c52b57]">Save</Button>
+                  <Button size="sm" variant="outline" className="bg-transparent" onClick={() => setIsAddingSource(false)}>
+                    Cancel
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex">
           {/* Content Creation - add 30px top padding */}
-          <div className={`${activeSection === "create" ? "w-[calc(100vw-656px)]" : "w-[calc(100vw-256px)]"} p-6 pt-[30px] h-full overflow-hidden`}>{renderMainContent()}</div>
+          <div className={`flex-1 p-6 pt-[30px] h-full overflow-hidden`}>{renderMainContent()}</div>
 
           {/* AI Assistant Panel (only shown for Create Post) */}
           {activeSection === "create" && (
           <div className="w-[400px] border-l border-white/10 pt-[25px] px-4 pb-[24px]">
-            <Card className="bg-gray-900/50 border-white/10 h-full flex flex-col">
+            <Card className="bg-[#2A2A30] border-[#3A3A42] h-full flex flex-col">
                   <div className="h-[30px] px-4 border-b border-white/10 flex items-center">
                     <div className="relative -mt-[15px]" ref={modelMenuRef}>
                       <button
@@ -2125,7 +2231,7 @@ export default function CreatePage() {
                         <ChevronDownIcon className={`w-4 h-4 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} />
                       </button>
                       {showModelMenu && (
-                        <div className="absolute mt-2 w-56 bg-[#0F111A] border border-white/10 rounded-md shadow-lg py-2 z-20">
+                        <div className="absolute mt-2 w-56 bg-[#2A2A30] border border-[#3A3A42] rounded-md shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] py-2 z-20">
                           {["ChatGPT","Claude Sonnet 4","gpt-4.1","o4-mini","o3","gpt-4o"].map((m) => (
                             <button
                               key={m}
@@ -2157,10 +2263,10 @@ export default function CreatePage() {
               </div>
 
               {/* Chat input area */}
-              <div className="border-t border-white/10 relative pt-[5px] pl-[9px] pr-[5px]">
+              <div className="border-t border-white/10 relative pt-[5px] pl-[9px] pr-[5px] h-[120px]">
                 <textarea
                   placeholder="Tôi là trợ lý viết mới của bạn. Bạn muốn viết về điều gì?"
-                  className="w-full h-[100px] bg-transparent border-none outline-none resize-none text-white placeholder-gray-400 text-sm"
+                  className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] rounded-md outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A30] resize-none text-white placeholder-gray-400 text-sm p-[10px]"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2177,10 +2283,83 @@ export default function CreatePage() {
         </div>
       </div>
 
+      {/* Source Modal (overlay) */}
+      {showSourceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowSourceModal(false) }}>
+          <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-2xl w-[1000px] max-w-[95vw] max-h-[90vh] overflow-hidden shadow-xl shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <h2 className="text-lg font-semibold text-white">Edit Source</h2>
+              <button className="text-gray-400 hover:text-white" onClick={() => setShowSourceModal(false)}>
+                <CloseIcon className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Tabs */}
+            <div className="px-6 pt-4">
+              <div className="grid grid-cols-7 gap-3">
+                {[
+                  { key: "text", label: "Text" },
+                  { key: "article", label: "Article" },
+                  { key: "youtube", label: "YouTube" },
+                  { key: "tiktok", label: "TikTok" },
+                  { key: "perplexity", label: "Perplexity" },
+                  { key: "audio", label: "Audio" },
+                  { key: "pdf", label: "PDF" },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    className={`px-4 py-3 rounded-md text-sm ${selectedSourceType === (t.key as any) ? 'bg-white/10 text-white' : 'bg-transparent text-gray-300 hover:text-white hover:bg-white/5'}`}
+                    onClick={() => setSelectedSourceType(t.key as any)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-4 space-y-3 overflow-auto" style={{ maxHeight: "60vh" }}>
+              <div className="text-white">Text</div>
+              {selectedSourceType === 'text' && (
+                <Textarea placeholder="Paste text here" className="bg-gray-900/50 border-white/10 h-40" />
+              )}
+              {selectedSourceType !== 'text' && (
+                <Input
+                  placeholder={
+                    selectedSourceType === 'article' ? 'Paste article URL...' :
+                    selectedSourceType === 'youtube' ? 'Paste YouTube URL...' :
+                    selectedSourceType === 'tiktok' ? 'Paste TikTok URL...' :
+                    selectedSourceType === 'pdf' ? 'Paste PDF URL...' :
+                    'Paste audio URL...'
+                  }
+                  className="bg-gray-900/50 border-white/10"
+                />
+              )}
+              <label className="flex items-center gap-3 text-white pt-2">
+                <input type="checkbox" className="accent-[#E33265]" />
+                <span>Save Source?</span>
+              </label>
+              <details className="text-white/90">
+                <summary className="cursor-pointer select-none">Advanced settings</summary>
+                <div className="mt-2 text-sm text-gray-300">No additional settings yet.</div>
+              </details>
+            </div>
+            {/* Footer */}
+            <div className="px-6 pb-6">
+              <button
+                className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white py-3 rounded-md"
+                onClick={() => setShowSourceModal(false)}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Video Upload Modal */}
       {showVideoModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#0F111A] border border-white/10 rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-6 w-full max-w-md mx-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Generate captions with AI</h2>
@@ -2253,7 +2432,7 @@ export default function CreatePage() {
       {/* Image Upload Modal for Add Media */}
       {showImageModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#190F2F] border border-white/10 rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-6 w-full max-w-md mx-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Share some pictures</h2>
               <button onClick={() => setShowImageModal(false)} className="text-gray-400 hover:text-white transition-colors">
@@ -2289,7 +2468,7 @@ export default function CreatePage() {
       {/* Publish Modal */}
       {showPublishModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div ref={publishModalRef} className="bg-[#190F2F] rounded-2xl p-6 w-96 max-w-[90vw] relative">
+          <div ref={publishModalRef} className="bg-[#2A2A30] rounded-2xl p-6 w-96 max-w-[90vw] relative border border-[#3A3A42]">
             {/* Platform Selection */}
             <div className="mb-4">
               {/* Account Selection with Platform Icon */}
@@ -2327,7 +2506,7 @@ export default function CreatePage() {
                 {/* Account Selection Box */}
                 <div className="flex-1 relative">
                   <div 
-                    className={`flex items-center gap-3 bg-gray-800/50 rounded-lg p-3 h-12 cursor-pointer hover:bg-gray-700/50 transition-colors ${showAccountDropdown ? 'ring-2 ring-[#E33265]' : ''}`}
+                    className={`flex items-center gap-3 bg-[#1E1E23] rounded-lg p-3 h-12 cursor-pointer transition-colors border border-[#3A3A42] ${showAccountDropdown ? 'ring-2 ring-[#E33265]' : ''}`}
                     onClick={() => setShowAccountDropdown(!showAccountDropdown)}
                   >
                     <div className="w-8 h-8 rounded-full overflow-hidden">
@@ -2342,7 +2521,7 @@ export default function CreatePage() {
                   
                   {/* Account Dropdown: only show if more than one account for platform */}
                   {showAccountDropdown && getAccountsForPlatform(selectedPlatform).length > 1 && (
-                    <div ref={accountDropdownRef} className="absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded-lg border border-gray-700 z-10 max-h-48 overflow-y-auto">
+                    <div ref={accountDropdownRef} className="absolute top-full left-0 right-0 mt-1 bg-[#1E1E23] rounded-lg border border-gray-700 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] z-10 max-h-48 overflow-y-auto">
                       {getAccountsForPlatform(selectedPlatform).map((account, index) => (
                         <button
                           key={index}
@@ -2372,7 +2551,7 @@ export default function CreatePage() {
               {/* Publishing Schedule */}
               <div className="mb-4">
                 <p className="text-white mb-2">Khi nào bạn muốn đăng nó?</p>
-                <div className={`relative rounded-lg ${isScheduleFocused ? 'ring-2 ring-[#E33265]' : ''}`}>
+                <div ref={calendarAnchorRef} className={`relative rounded-lg bg-[#1E1E23] border border-[#3A3A42] ${isScheduleFocused ? 'ring-2 ring-[#E33265]' : ''}`}>
                   <select 
                     value={publishTime} 
                     onChange={(e) => {
@@ -2385,7 +2564,7 @@ export default function CreatePage() {
                     }}
                     onFocus={() => setIsScheduleFocused(true)}
                     onBlur={() => setIsScheduleFocused(false)}
-                    className="w-full bg-gray-800/50 text-white rounded-lg p-3 appearance-none pr-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E33265]"
+                    className="w-full bg-[#1E1E23] text-white rounded-lg p-3 appearance-none pr-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E33265]"
                   >
                     <option value="now|Bây giờ">Bây giờ</option>
                     <option value="next free slot">Khe trống tiếp theo</option>
@@ -2400,7 +2579,7 @@ export default function CreatePage() {
                 <div className="mb-4">
                   <div className="text-white mb-2">Chọn thời gian</div>
                   <div 
-                    className={`w-full bg-gray-800/50 text-white rounded-lg p-3 cursor-pointer hover:bg-gray-700/50 ${showCalendar ? 'ring-2 ring-[#E33265]' : ''}`}
+                    className={`w-full bg-[#1E1E23] text-white rounded-lg p-3 cursor-pointer border border-[#3A3A42] ${showCalendar ? 'ring-2 ring-[#E33265]' : ''}`}
                     onClick={() => setShowCalendar(true)}
                     role="button"
                     aria-label="Chọn thời gian"
@@ -2415,7 +2594,7 @@ export default function CreatePage() {
               {showCalendar && publishTime === "pick a time" && (
                 <div
                   ref={calendarRef}
-                  className="absolute left-full top-0 ml-4 bg-gray-900/70 rounded-xl p-4 w-[320px] shadow-xl border border-white/10"
+                  className="absolute left-full top-0 ml-4 bg-[#2A2A30] rounded-xl p-4 w-[320px] shadow-xl border border-[#3A3A42] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleConfirmPickTime()
