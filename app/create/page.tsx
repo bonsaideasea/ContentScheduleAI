@@ -308,6 +308,19 @@ export default function CreatePage() {
     return Array.isArray(list) ? list : []
   }
 
+  // Helper to calculate maximum width needed for profile names
+  function getMaxProfileWidth(posts: any[]) {
+    let maxWidth = 0
+    posts.forEach(post => {
+      const account = getAccountsForPlatform(post.platform)[0]
+      const username = account?.username || "Unknown Account"
+      // Estimate width based on character count (rough approximation)
+      const estimatedWidth = username.length * 6 + 28 // 6px per char + 28px for profile picture and gap
+      maxWidth = Math.max(maxWidth, estimatedWidth)
+    })
+    return Math.min(maxWidth, 200) // Cap at 200px to prevent excessive width
+  }
+
   // Derive current account info when needed
   const selectedAccountInfo = (() => {
     const accounts = getAccountsForPlatform(selectedPlatform)
@@ -325,11 +338,9 @@ export default function CreatePage() {
   const [clickedDays, setClickedDays] = useState<Set<string>>(new Set())
   // Drag and drop state for social media icons
   const [draggedIcon, setDraggedIcon] = useState<string | null>(null)
-  const [calendarEvents, setCalendarEvents] = useState<{[key: number]: Array<{platform: string, time: string, status: string, noteType: 'red' | 'yellow' | 'green'}>}>({})
-  // Today's date for pink circle indicator
-  const today = new Date().getDate()
+  const [calendarEvents, setCalendarEvents] = useState<{[key: string]: Array<{platform: string, time: string, status: string, noteType: 'red' | 'yellow' | 'green'}>}>({})
   // Calendar note popup state
-  const [selectedNote, setSelectedNote] = useState<{dayNum: number, noteIndex: number} | null>(null)
+  const [selectedNote, setSelectedNote] = useState<{dayNum: number, noteIndex: number, year: number, month: number} | null>(null)
   const [showNotePopup, setShowNotePopup] = useState(false)
   const [noteTime, setNoteTime] = useState({hour: '10', minute: '00', amPm: 'AM'})
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -357,6 +368,132 @@ export default function CreatePage() {
       platform: "Instagram",
       date: "2024-01-14",
       error: "Authentication failed"
+    },
+    {
+      id: 3,
+      content: "This is an extremely long post that definitely exceeds the character limit for Twitter. I'm going to keep typing and typing to make sure this post is way too long for the platform. The character limit for Twitter is 280 characters, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 280 character limit for Twitter. This should be long enough now to trigger the character limit error. I hope this works!",
+      platform: "Twitter",
+      date: "2024-01-13",
+      error: "Character limit exceeded"
+    },
+    {
+      id: 4,
+      content: "Working from home today and honestly, the productivity is unmatched. No commute, comfy clothes, and my cat as my co-worker. What's your WFH setup like? 🏠💻",
+      platform: "LinkedIn",
+      date: "2024-01-12",
+      error: "Rate limit exceeded"
+    },
+    {
+      id: 5,
+      content: "Just discovered this incredible new coffee shop downtown. The barista made a latte art of a cat! 🐱☕️ Sometimes it's the little things that make your day. #CoffeeLife #LocalBusiness",
+      platform: "Twitter",
+      date: "2024-01-11",
+      error: "Content policy violation"
+    },
+    {
+      id: 6,
+      content: "Weekend vibes: cooking a new recipe, catching up on Netflix, and planning next week's goals. How do you like to unwind? 🍳📺✨",
+      platform: "Threads",
+      date: "2024-01-10",
+      error: "Server error 500"
+    },
+    {
+      id: 7,
+      content: "Morning walk in the park was exactly what I needed. Fresh air, birds chirping, and time to think. Nature has a way of resetting your mind. 🌳🚶‍♀️",
+      platform: "TikTok",
+      date: "2024-01-09",
+      error: "Video processing failed"
+    },
+    {
+      id: 8,
+      content: "Just finished a 5K run and feeling amazing! The endorphins are real. Who else loves that post-workout high? 🏃‍♀️💪 #FitnessMotivation",
+      platform: "Bluesky",
+      date: "2024-01-08",
+      error: "Account suspended"
+    },
+    {
+      id: 9,
+      content: "Tried a new recipe today - homemade pasta from scratch! It was messy but so worth it. Cooking is such a therapeutic activity. 🍝👨‍🍳",
+      platform: "YouTube",
+      date: "2024-01-07",
+      error: "Video upload failed"
+    },
+    {
+      id: 10,
+      content: "Found the perfect spot for my home office. Natural light, plants everywhere, and a view of the garden. Productivity level: maximum! 🌱💻",
+      platform: "Pinterest",
+      date: "2024-01-06",
+      error: "Image upload failed"
+    },
+    {
+      id: 11,
+      content: "Late night coding session with some good music and even better coffee. The best ideas come at 2 AM, right? 💻🎵☕️ #DeveloperLife",
+      platform: "Twitter",
+      date: "2024-01-05",
+      error: "API key expired"
+    },
+    {
+      id: 12,
+      content: "Another extremely long post that will definitely exceed the character limit for Threads platform. Threads has a 500 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 500 character limit for Threads. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit. This is definitely going to be over 500 characters now.",
+      platform: "Threads",
+      date: "2024-01-04",
+      error: "Character limit exceeded"
+    },
+    {
+      id: 13,
+      content: "Beautiful sunset today! 🌅",
+      platform: "Instagram",
+      date: "2024-01-03",
+      error: "Connection timeout"
+    },
+    {
+      id: 14,
+      content: "Just had the most amazing dinner at this new restaurant downtown. The chef is incredible and the atmosphere is perfect for a date night. Highly recommend checking it out if you're in the area! 🍽️✨",
+      platform: "Facebook",
+      date: "2024-01-02",
+      error: "Authentication failed"
+    },
+    {
+      id: 15,
+      content: "This is another very long post that will exceed the character limit for Bluesky. Bluesky has a 300 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 300 character limit for Bluesky. This should be long enough now to trigger the character limit error. I hope this works!",
+      platform: "Bluesky",
+      date: "2024-01-01",
+      error: "Character limit exceeded"
+    },
+    {
+      id: 16,
+      content: "New year, new goals! 🎯",
+      platform: "LinkedIn",
+      date: "2023-12-31",
+      error: "Rate limit exceeded"
+    },
+    {
+      id: 17,
+      content: "This post contains some potentially sensitive content that might violate platform policies. Let's see what happens when we try to post something that could be flagged by content moderation systems. This is just a test to see how the platform handles different types of content.",
+      platform: "TikTok",
+      date: "2023-12-30",
+      error: "Content policy violation"
+    },
+    {
+      id: 18,
+      content: "Another extremely long post for Pinterest that will definitely exceed the character limit. Pinterest has a 500 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 500 character limit for Pinterest. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit.",
+      platform: "Pinterest",
+      date: "2023-12-29",
+      error: "Character limit exceeded"
+    },
+    {
+      id: 19,
+      content: "Quick update: Everything is going great! 👍",
+      platform: "YouTube",
+      date: "2023-12-28",
+      error: "Video processing failed"
+    },
+    {
+      id: 20,
+      content: "This is a very long post for LinkedIn that will exceed the character limit. LinkedIn has a 3000 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 3000 character limit for LinkedIn. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit. This is definitely going to be over 3000 characters now. I need to keep typing to reach that limit. This is getting quite extensive now. Let me continue adding more content to ensure we definitely exceed the LinkedIn character limit. This should be more than enough text to trigger the character limit error. I'm going to keep adding more and more text until we're absolutely sure we've exceeded the 3000 character limit for LinkedIn posts. This is getting quite long now, and I'm still adding more text to make sure we definitely exceed the limit. I hope this works!",
+      platform: "LinkedIn",
+      date: "2023-12-27",
+      error: "Character limit exceeded"
     }
   ])
   // Removed experimental calendar UI flag
@@ -367,15 +504,27 @@ export default function CreatePage() {
     return new Date(year, monthIndex + 1, 0).getDate()
   }
 
+  // Helper: generate month-specific key for calendar events
+  function getCalendarKey(year: number, month: number, day: number): string {
+    return `${year}-${month}-${day}`
+  }
+
+  // Helper: get calendar events for a specific day
+  function getCalendarEventsForDay(year: number, month: number, day: number) {
+    const key = getCalendarKey(year, month, day)
+    return calendarEvents[key] || []
+  }
+
   // Drag and drop handlers for social media icons
   const handleIconDragStart = (e: React.DragEvent, platform: string) => {
     setDraggedIcon(platform)
     e.dataTransfer.effectAllowed = 'copy'
   }
 
-  const handleCalendarNoteDragStart = (e: React.DragEvent, dayNum: number, noteIndex: number) => {
-    console.log('Drag start triggered for day:', dayNum, 'note:', noteIndex)
-    const event = calendarEvents[dayNum]?.[noteIndex]
+  const handleCalendarNoteDragStart = (e: React.DragEvent, dayNum: number, noteIndex: number, year: number, month: number) => {
+    console.log('Drag start triggered for day:', dayNum, 'note:', noteIndex, 'year:', year, 'month:', month)
+    const key = getCalendarKey(year, month, dayNum)
+    const event = calendarEvents[key]?.[noteIndex]
     console.log('Event data:', event)
     // Allow dragging only for scheduled (yellow) and not scheduled (red) notes. Published (green) is locked.
     if (event && (event.noteType === 'yellow' || event.noteType === 'red')) {
@@ -383,7 +532,9 @@ export default function CreatePage() {
       const eventData = {
         sourceDay: dayNum,
         eventIndex: noteIndex,
-        event: event
+        event: event,
+        sourceYear: year,
+        sourceMonth: month
       }
       e.dataTransfer.setData('application/json', JSON.stringify(eventData))
       e.dataTransfer.effectAllowed = 'move'
@@ -405,9 +556,9 @@ export default function CreatePage() {
     e.dataTransfer.dropEffect = 'copy'
   }
 
-  const handleCalendarDrop = (e: React.DragEvent, dayNum: number) => {
+  const handleCalendarDrop = (e: React.DragEvent, dayNum: number, year: number, month: number) => {
     e.preventDefault()
-    console.log('Drop triggered on day:', dayNum)
+    console.log('Drop triggered on day:', dayNum, 'year:', year, 'month:', month)
     const draggedEventData = e.dataTransfer.getData('application/json')
     console.log('Dragged event data:', draggedEventData)
     
@@ -418,31 +569,33 @@ export default function CreatePage() {
     const todayYear = currentDate.getFullYear()
     
     // Only allow drops on today or future dates (same month and year)
-    if (dayNum >= todayDay && currentMonth === todayMonth && currentYear === todayYear) {
+    if (dayNum >= todayDay && month === todayMonth && year === todayYear) {
       // If dragging an existing calendar note (yellow/red)
       if (draggedEventData) {
         try {
           const eventData = JSON.parse(draggedEventData)
-          const { sourceDay, eventIndex, event } = eventData
+          const { sourceDay, eventIndex, event, sourceYear, sourceMonth } = eventData
           console.log('Moving event from day', sourceDay, 'to day', dayNum)
           
-          // Remove from source day
+          // Remove from source day using month-specific key
           setCalendarEvents(prev => {
             const newEvents = { ...prev }
-            if (newEvents[sourceDay]) {
-              newEvents[sourceDay] = newEvents[sourceDay].filter((_, idx) => idx !== eventIndex)
-              if (newEvents[sourceDay].length === 0) {
-                delete newEvents[sourceDay]
+            const sourceKey = getCalendarKey(sourceYear, sourceMonth, sourceDay)
+            if (newEvents[sourceKey]) {
+              newEvents[sourceKey] = newEvents[sourceKey].filter((_, idx) => idx !== eventIndex)
+              if (newEvents[sourceKey].length === 0) {
+                delete newEvents[sourceKey]
               }
             }
             return newEvents
           })
           
-          // Add to new day
+          // Add to new day using month-specific key
           setCalendarEvents(prev => {
+            const targetKey = getCalendarKey(year, month, dayNum)
             const updatedEvents = {
             ...prev,
-            [dayNum]: [...(prev[dayNum] || []), event]
+            [targetKey]: [...(prev[targetKey] || []), event]
             }
             saveToLocalStorage('calendarEvents', updatedEvents)
             return updatedEvents
@@ -479,10 +632,11 @@ export default function CreatePage() {
   }
 
   // Calendar note popup handlers
-  const handleNoteClick = (dayNum: number, noteIndex: number, event: React.MouseEvent) => {
-    console.log('handleNoteClick called for day:', dayNum, 'noteIndex:', noteIndex)
-    // Get the note to check its type
-    const note = calendarEvents[dayNum]?.[noteIndex]
+  const handleNoteClick = (dayNum: number, noteIndex: number, year: number, month: number, event: React.MouseEvent) => {
+    console.log('handleNoteClick called for day:', dayNum, 'noteIndex:', noteIndex, 'year:', year, 'month:', month)
+    // Get the note to check its type using month-specific key
+    const key = getCalendarKey(year, month, dayNum)
+    const note = calendarEvents[key]?.[noteIndex]
     console.log('Note found:', note)
     
     // Don't show popup if no note
@@ -529,7 +683,7 @@ export default function CreatePage() {
     y = Math.max(margin, Math.min(y, viewportHeight - popupHeight - margin))
     
     setNotePopupPosition({ x, y })
-    setSelectedNote({dayNum, noteIndex})
+    setSelectedNote({dayNum, noteIndex, year, month})
     setShowNotePopup(true)
     // Set current time from user's local time
     const now = new Date()
@@ -555,7 +709,8 @@ export default function CreatePage() {
   const handleConfirmDelete = () => {
     console.log('handleConfirmDelete called, selectedNote:', selectedNote)
     if (selectedNote) {
-      console.log('Deleting note from day:', selectedNote.dayNum, 'index:', selectedNote.noteIndex)
+      const { dayNum, noteIndex, year, month } = selectedNote
+      console.log('Deleting note from day:', dayNum, 'index:', noteIndex, 'year:', year, 'month:', month)
       
       // Get current calendar events
       const currentEvents = calendarEvents
@@ -565,20 +720,21 @@ export default function CreatePage() {
         const newEvents = {...prev}
         console.log('Previous events in setState:', prev)
         
-        if (newEvents[selectedNote.dayNum]) {
-          console.log('Events for day', selectedNote.dayNum, ':', newEvents[selectedNote.dayNum])
-          newEvents[selectedNote.dayNum] = newEvents[selectedNote.dayNum].filter((_, index) => {
-            console.log('Checking index', index, 'against', selectedNote.noteIndex)
-            return index !== selectedNote.noteIndex
+        const key = getCalendarKey(year, month, dayNum)
+        if (newEvents[key]) {
+          console.log('Events for day', dayNum, ':', newEvents[key])
+          newEvents[key] = newEvents[key].filter((_, index) => {
+            console.log('Checking index', index, 'against', noteIndex)
+            return index !== noteIndex
           })
-          console.log('Events after filter:', newEvents[selectedNote.dayNum])
+          console.log('Events after filter:', newEvents[key])
           
-          if (newEvents[selectedNote.dayNum].length === 0) {
-            console.log('No events left for day', selectedNote.dayNum, ', deleting day')
-            delete newEvents[selectedNote.dayNum]
+          if (newEvents[key].length === 0) {
+            console.log('No events left for day', dayNum, ', deleting day')
+            delete newEvents[key]
           }
         } else {
-          console.log('No events found for day', selectedNote.dayNum)
+          console.log('No events found for day', dayNum)
         }
         
         console.log('Final updated calendar events:', newEvents)
@@ -633,6 +789,72 @@ export default function CreatePage() {
     setShowDraftDeleteConfirm(true)
   }
 
+  // Get failure reason and character limit for a post
+  const getFailureReason = (post: any) => {
+    const platform = post.platform.toLowerCase()
+    const contentLength = post.content.length
+    
+    // Character limits for each platform
+    const characterLimits = {
+      twitter: 280,
+      facebook: 2200,
+      instagram: 2200,
+      linkedin: 3000,
+      threads: 500,
+      tiktok: 2200,
+      bluesky: 300,
+      youtube: 5000,
+      pinterest: 500
+    }
+    
+    const limit = characterLimits[platform as keyof typeof characterLimits] || 2200
+    
+    // Determine failure reason based on error message and content length
+    if (post.error.includes('character') || post.error.includes('limit') || contentLength > limit) {
+      return {
+        type: 'character_limit',
+        message: `Character limit exceeded. Please reduce it to ${limit} characters.`,
+        currentLength: contentLength,
+        limit: limit
+      }
+    } else if (post.error.includes('network') || post.error.includes('timeout') || post.error.includes('connection')) {
+      return {
+        type: 'connection',
+        message: 'Connection was poor. Please try again.',
+        currentLength: contentLength,
+        limit: limit
+      }
+    } else if (post.error.includes('authentication') || post.error.includes('auth')) {
+      return {
+        type: 'authentication',
+        message: 'Authentication failed. Please check your account settings.',
+        currentLength: contentLength,
+        limit: limit
+      }
+    } else if (post.error.includes('policy') || post.error.includes('violation')) {
+      return {
+        type: 'policy',
+        message: 'Content policy violation. Please review and modify your content.',
+        currentLength: contentLength,
+        limit: limit
+      }
+    } else if (post.error.includes('rate limit') || post.error.includes('limit exceeded')) {
+      return {
+        type: 'rate_limit',
+        message: 'Rate limit exceeded. Please wait a moment before trying again.',
+        currentLength: contentLength,
+        limit: limit
+      }
+    } else {
+      return {
+        type: 'other',
+        message: 'An unexpected error occurred. Please try again.',
+        currentLength: contentLength,
+        limit: limit
+      }
+    }
+  }
+
   // Handle retry click for failed posts
   const handleRetryClick = (id: number) => {
     setPostToRetry(id)
@@ -642,25 +864,70 @@ export default function CreatePage() {
   // Handle retry confirmation
   const handleRetryConfirm = () => {
     if (postToRetry) {
-      // Remove from failed posts
-      const updatedFailedPosts = failedPosts.filter(post => post.id !== postToRetry)
-      setFailedPosts(updatedFailedPosts)
-      saveToLocalStorage('failedPosts', updatedFailedPosts)
-      
-      // Add to drafts for retry
       const postToMove = failedPosts.find(post => post.id === postToRetry)
       if (postToMove) {
-        const newDraft = {
-          id: Date.now(), // New ID for draft
-          content: postToMove.content,
-          platform: postToMove.platform,
-          platformIcon: postToMove.platform,
-          date: new Date().toISOString().split('T')[0],
-          status: 'draft'
+        const failureReason = getFailureReason(postToMove)
+        
+        if (failureReason.type === 'character_limit' || failureReason.type === 'policy') {
+          // For character limit or content policy issues, create a new post tab for editing
+          const newPostId = Date.now()
+          setOpenPosts(prev => [...prev, { id: newPostId, type: postToMove.platform }])
+          setSelectedPostId(newPostId)
+          setPostContents(prev => ({
+            ...prev,
+            [newPostId]: postToMove.content
+          }))
+          
+          // Remove from failed posts
+          const updatedFailedPosts = failedPosts.filter(post => post.id !== postToRetry)
+          setFailedPosts(updatedFailedPosts)
+          saveToLocalStorage('failedPosts', updatedFailedPosts)
+          
+          // Switch to the create tab to show the new post with full formatting
+          setActiveSection('create')
+        } else {
+          // For other issues, show loading then result popup
+          setShowRetryLoading(true)
+          
+          // Simulate retry process with random success/failure
+          setTimeout(() => {
+            const isSuccess = Math.random() > 0.4 // 60% success rate
+            
+            if (isSuccess) {
+              // Success - remove from failed posts and add to published
+              const updatedFailedPosts = failedPosts.filter(post => post.id !== postToRetry)
+              setFailedPosts(updatedFailedPosts)
+              saveToLocalStorage('failedPosts', updatedFailedPosts)
+              
+              const newPublishedPost = {
+                id: Date.now(),
+                content: postToMove.content,
+                platform: postToMove.platform,
+                date: new Date().toISOString().split('T')[0],
+                status: 'published',
+                url: `https://${postToMove.platform.toLowerCase()}.com/post/${Date.now()}`
+              }
+              const updatedPublished = [...publishedPosts, newPublishedPost]
+              setPublishedPosts(updatedPublished)
+              saveToLocalStorage('publishedPosts', updatedPublished)
+            } else {
+              // Failure - keep in failed posts but update error message
+              const updatedFailedPosts = failedPosts.map(post => 
+                post.id === postToRetry 
+                  ? { ...post, error: failureReason.message }
+                  : post
+              )
+              setFailedPosts(updatedFailedPosts)
+              saveToLocalStorage('failedPosts', updatedFailedPosts)
+              setRetryFailureReason(failureReason.message)
+            }
+            
+            // Show result modal
+            setShowRetryLoading(false)
+            setRetrySuccess(isSuccess)
+            setShowRetryResult(true)
+          }, 2000) // 2 second loading simulation
         }
-        const updatedDrafts = [...draftPosts, newDraft]
-        setDraftPosts(updatedDrafts)
-        saveToLocalStorage('draftPosts', updatedDrafts)
       }
     }
     setShowRetryConfirm(false)
@@ -671,6 +938,13 @@ export default function CreatePage() {
   const handleRetryCancel = () => {
     setShowRetryConfirm(false)
     setPostToRetry(null)
+  }
+
+  // Handle retry result modal close
+  const handleRetryResultClose = () => {
+    setShowRetryResult(false)
+    setRetrySuccess(false)
+    setRetryFailureReason("")
   }
 
   // Handle draft delete confirmation
@@ -724,9 +998,10 @@ export default function CreatePage() {
       }
       const newTime = `${hour24.toString().padStart(2, '0')}:${noteTime.minute}`
       setCalendarEvents(prev => {
+        const key = getCalendarKey(selectedNote.year, selectedNote.month, selectedNote.dayNum)
         const updatedEvents = {
         ...prev,
-        [selectedNote.dayNum]: prev[selectedNote.dayNum].map((note, index) => 
+        [key]: prev[key].map((note, index) => 
           index === selectedNote.noteIndex 
             ? {...note, time: newTime}
             : note
@@ -742,9 +1017,10 @@ export default function CreatePage() {
 
   const handleCalendarNoteView = () => {
     if (selectedNote) {
-      const { dayNum, noteIndex } = selectedNote
-      const noteKey = `${dayNum}-${noteIndex}`
-      const event = calendarEvents[dayNum]?.[noteIndex]
+      const { dayNum, noteIndex, year, month } = selectedNote
+      const noteKey = `${year}-${month}-${dayNum}-${noteIndex}`
+      const key = getCalendarKey(year, month, dayNum)
+      const event = calendarEvents[key]?.[noteIndex]
       
       // Set the active section to create post
       setActiveSection('create')
@@ -783,8 +1059,9 @@ export default function CreatePage() {
 
   const handleRedNoteView = () => {
     if (selectedNote) {
-      const { dayNum, noteIndex } = selectedNote
-      const event = calendarEvents[dayNum]?.[noteIndex]
+      const { dayNum, noteIndex, year, month } = selectedNote
+      const key = getCalendarKey(year, month, dayNum)
+      const event = calendarEvents[key]?.[noteIndex]
       
       if (event) {
         // For red notes (posted), open external URL
@@ -934,7 +1211,28 @@ export default function CreatePage() {
     const file = event.target.files?.[0]
     if (file) {
       console.log('Selected file:', file.name)
-      // Handle file upload logic here
+      
+      // Validate file type
+      if (!file.type.startsWith('video/')) {
+        alert('Please select a video file (MP4, MOV, etc.)')
+        return
+      }
+      
+      // Validate file size (2GB = 2 * 1024 * 1024 * 1024 bytes)
+      const maxSize = 2 * 1024 * 1024 * 1024
+      if (file.size > maxSize) {
+        alert('File size must be less than 2GB')
+        return
+      }
+      
+      setSelectedVideoFile(file)
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file)
+      setVideoPreview(previewUrl)
+      
+      // Add to main content area
+      setUploadedMedia(prev => [...prev, {type: 'video', file, preview: previewUrl}])
     }
   }
 
@@ -954,15 +1252,55 @@ export default function CreatePage() {
     const file = event.dataTransfer.files[0]
     if (file) {
       console.log('Dropped file:', file.name)
-      // Handle file upload logic here
+      
+      // Validate file type
+      if (!file.type.startsWith('video/')) {
+        alert('Please drop a video file (MP4, MOV, etc.)')
+        return
+      }
+      
+      // Validate file size (2GB = 2 * 1024 * 1024 * 1024 bytes)
+      const maxSize = 2 * 1024 * 1024 * 1024
+      if (file.size > maxSize) {
+        alert('File size must be less than 2GB')
+        return
+      }
+      
+      setSelectedVideoFile(file)
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file)
+      setVideoPreview(previewUrl)
+      
+      // Add to main content area
+      setUploadedMedia(prev => [...prev, {type: 'video', file, preview: previewUrl}])
     }
   }
 
   // Image upload handlers for Add Media
   function handleImageFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (file) {
-      console.log('Selected image:', file.name)
+    const files = event.target.files
+    if (files && files.length > 0) {
+      const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'))
+      
+      if (imageFiles.length === 0) {
+        alert('Please select image files (JPG, PNG, GIF, etc.)')
+        return
+      }
+      
+      // Validate file sizes (10MB per image)
+      const maxSize = 10 * 1024 * 1024
+      const oversizedFiles = imageFiles.filter(file => file.size > maxSize)
+      if (oversizedFiles.length > 0) {
+        alert(`Some files are too large. Maximum size per image is 10MB.`)
+        return
+      }
+      
+      setSelectedImageFiles(prev => [...prev, ...imageFiles])
+      
+      // Create preview URLs
+      const newPreviews = imageFiles.map(file => URL.createObjectURL(file))
+      setImagePreviews(prev => [...prev, ...newPreviews])
     }
   }
   function handleImageDragOver(event: React.DragEvent) {
@@ -976,9 +1314,28 @@ export default function CreatePage() {
   function handleImageDrop(event: React.DragEvent) {
     event.preventDefault()
     setIsDragOverImage(false)
-    const file = event.dataTransfer.files[0]
-    if (file) {
-      console.log('Dropped image:', file.name)
+    const files = event.dataTransfer.files
+    if (files && files.length > 0) {
+      const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'))
+      
+      if (imageFiles.length === 0) {
+        alert('Please drop image files (JPG, PNG, GIF, etc.)')
+        return
+      }
+      
+      // Validate file sizes (10MB per image)
+      const maxSize = 10 * 1024 * 1024
+      const oversizedFiles = imageFiles.filter(file => file.size > maxSize)
+      if (oversizedFiles.length > 0) {
+        alert(`Some files are too large. Maximum size per image is 10MB.`)
+        return
+      }
+      
+      setSelectedImageFiles(prev => [...prev, ...imageFiles])
+      
+      // Create preview URLs
+      const newPreviews = imageFiles.map(file => URL.createObjectURL(file))
+      setImagePreviews(prev => [...prev, ...newPreviews])
     }
   }
 
@@ -995,9 +1352,16 @@ export default function CreatePage() {
   // Video upload modal state
   const [showVideoModal, setShowVideoModal] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null)
+  const [videoPreview, setVideoPreview] = useState<string | null>(null)
   // Image upload modal state for Add Media
   const [showImageModal, setShowImageModal] = useState(false)
   const [isDragOverImage, setIsDragOverImage] = useState(false)
+  const [selectedImageFiles, setSelectedImageFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  // Media in main content area
+  const [uploadedMedia, setUploadedMedia] = useState<Array<{type: 'image' | 'video', file: File, preview: string}>>([])
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [chatInput, setChatInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
@@ -1265,6 +1629,10 @@ export default function CreatePage() {
   const [showPublishedPlatformDropdown, setShowPublishedPlatformDropdown] = useState(false)
   const [showRetryConfirm, setShowRetryConfirm] = useState(false)
   const [postToRetry, setPostToRetry] = useState<number | null>(null)
+  const [showRetryLoading, setShowRetryLoading] = useState(false)
+  const [showRetryResult, setShowRetryResult] = useState(false)
+  const [retrySuccess, setRetrySuccess] = useState(false)
+  const [retryFailureReason, setRetryFailureReason] = useState("")
 
   // Filter and sort functions
   const filterAndSortPosts = (posts: any[], searchTerm: string, dateFilter: string, platformFilter: string) => {
@@ -1412,8 +1780,8 @@ export default function CreatePage() {
   // Save content to calendar note when user is working on a calendar note
   useEffect(() => {
     if (selectedNote) {
-      const { dayNum, noteIndex } = selectedNote
-      const noteKey = `${dayNum}-${noteIndex}`
+      const { dayNum, noteIndex, year, month } = selectedNote
+      const noteKey = `${year}-${month}-${dayNum}-${noteIndex}`
       const content = postContents[selectedPostId] || ""
       if (content) {
         setCalendarNoteContent(prev => ({
@@ -1459,6 +1827,8 @@ export default function CreatePage() {
     if (publishTime === "pick a time" && selectedDate && selectedTime) {
       const scheduledDate = new Date(selectedDate)
       const dayNum = scheduledDate.getDate()
+      const month = scheduledDate.getMonth()
+      const year = scheduledDate.getFullYear()
       
       // Convert selectedTime from 12-hour to 24-hour format for storage
       const timeParts = selectedTime.split(' ')
@@ -1483,18 +1853,20 @@ export default function CreatePage() {
         noteType: 'yellow' as const
       }
       
-      // Add to calendar events
+      // Add to calendar events using month-specific key
       setCalendarEvents(prev => {
+        const key = getCalendarKey(year, month, dayNum)
         const updatedEvents = {
         ...prev,
-        [dayNum]: [...(prev[dayNum] || []), calendarNote]
+        [key]: [...(prev[key] || []), calendarNote]
         }
         saveToLocalStorage('calendarEvents', updatedEvents)
         return updatedEvents
       })
       
-      // Save content to calendar note
-      const noteKey = `${dayNum}-${(calendarEvents[dayNum] || []).length}`
+      // Save content to calendar note using month-specific key
+      const key = getCalendarKey(year, month, dayNum)
+      const noteKey = `${year}-${month}-${dayNum}-${(calendarEvents[key] || []).length}`
       setCalendarNoteContent(prev => ({
         ...prev,
         [noteKey]: content
@@ -1519,8 +1891,10 @@ export default function CreatePage() {
       })
       
       // Create GREEN calendar note for today (successfully posted)
-      const today = new Date().getDate()
       const now = new Date()
+      const today = now.getDate()
+      const month = now.getMonth()
+      const year = now.getFullYear()
       const currentTime = now.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
@@ -1553,18 +1927,20 @@ export default function CreatePage() {
                 console.log("Calendar note object:", redCalendarNote)
                 console.log("TikTok platform check:", selectedPlatform === 'TikTok')
       
-      // Add to calendar events
+      // Add to calendar events using month-specific key
       setCalendarEvents(prev => {
+        const key = getCalendarKey(year, month, today)
         const updatedEvents = {
         ...prev,
-        [today]: [...(prev[today] || []), redCalendarNote]
+        [key]: [...(prev[key] || []), redCalendarNote]
         }
         saveToLocalStorage('calendarEvents', updatedEvents)
         return updatedEvents
       })
       
-      // Save content to calendar note
-      const noteKey = `${today}-${(calendarEvents[today] || []).length}`
+      // Save content to calendar note using month-specific key
+      const key = getCalendarKey(year, month, today)
+      const noteKey = `${year}-${month}-${today}-${(calendarEvents[key] || []).length}`
       setCalendarNoteContent(prev => ({
         ...prev,
         [noteKey]: content
@@ -1846,8 +2222,8 @@ export default function CreatePage() {
                       selectedDay === dayNum
                     const clickedKey = `${cellDate.getFullYear()}-${cellDate.getMonth()}-${dayNum}`
                     const isClicked = clickedDays.has(clickedKey)
-                    // Get events for this day from state
-                    const dayEvents = calendarEvents[dayNum] || []
+                    // Get events for this day from state using month-specific key
+                    const dayEvents = getCalendarEventsForDay(cellDate.getFullYear(), cellDate.getMonth(), dayNum)
                     const cellEvents: Array<{ platform: string; label: string; color: string; text: string; icon: string }> = dayEvents.map((event, eventIdx) => {
                       console.log("Rendering calendar note for platform:", event.platform)
                       console.log("TikTok check:", event.platform === 'TikTok')
@@ -1911,27 +2287,34 @@ export default function CreatePage() {
                           setClickedDays(new Set([clickedKey]))
                         }}
                         onDragOver={handleCalendarDragOver}
-                        onDrop={(e) => handleCalendarDrop(e, dayNum)}
+                        onDrop={(e) => handleCalendarDrop(e, dayNum, cellDate.getFullYear(), cellDate.getMonth())}
                       >
               <div className="relative">
-                          {dayNum === today && (
-                            <div className="absolute -top-1 -left-1 w-6 h-6 bg-[#E33265] rounded-full flex items-center justify-center">
-                              <div className="text-xs text-white font-medium">{dayNum}</div>
-              </div>
-                          )}
+                          {(() => {
+                            const currentDate = new Date()
+                            const isToday = cellDate.getDate() === currentDate.getDate() && 
+                                           cellDate.getMonth() === currentDate.getMonth() && 
+                                           cellDate.getFullYear() === currentDate.getFullYear()
+                            return isToday ? (
+                              <div className="absolute -top-1 -left-1 w-6 h-6 bg-[#E33265] rounded-full flex items-center justify-center">
+                                <div className="text-xs text-white font-medium">{dayNum}</div>
+                              </div>
+                            ) : null
+                          })()}
                           <div className={`text-xs ${inCurrentMonth ? 'text-white/90' : 'text-white/40'}`}>{dayNum}</div>
             </div>
                         <div className="mt-2 space-y-1 max-h-16 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
                           {cellEvents.map((ev, idx) => {
-                            const event = calendarEvents[dayNum]?.[idx]
+                            const key = getCalendarKey(cellDate.getFullYear(), cellDate.getMonth(), dayNum)
+                            const event = calendarEvents[key]?.[idx]
                             const isDraggable = event && (event.noteType === 'yellow' || event.noteType === 'red')
                             
         return (
                               <button
                                 key={idx}
-                                onClick={(e) => handleNoteClick(dayNum, idx, e)}
+                                onClick={(e) => handleNoteClick(dayNum, idx, cellDate.getFullYear(), cellDate.getMonth(), e)}
                                 draggable={isDraggable}
-                                onDragStart={(e) => handleCalendarNoteDragStart(e, dayNum, idx)}
+                                onDragStart={(e) => handleCalendarNoteDragStart(e, dayNum, idx, cellDate.getFullYear(), cellDate.getMonth())}
                                 onDragEnd={handleCalendarNoteDragEnd}
                                 className={`inline-flex items-center gap-2 text-[11px] px-2 py-1 rounded-md border w-full h-6 whitespace-nowrap overflow-visible ${ev.color} ${ev.text} hover:opacity-80 transition-opacity ${isDraggable ? 'cursor-move' : 'cursor-pointer'} ${isDraggable ? 'hover:scale-105' : ''}`}
                               >
@@ -1986,8 +2369,9 @@ export default function CreatePage() {
 
             {/* Calendar Note Popup */}
             {showNotePopup && selectedNote && (() => {
-              const { dayNum, noteIndex } = selectedNote
-              const note = calendarEvents[dayNum]?.[noteIndex]
+              const { dayNum, noteIndex, year, month } = selectedNote
+              const key = getCalendarKey(year, month, dayNum)
+              const note = calendarEvents[key]?.[noteIndex]
               const isPublishedNote = note?.noteType === 'green' // green means published
               
         return (
@@ -2024,8 +2408,10 @@ export default function CreatePage() {
                       <>
                         {/* Time Selection - Only show if note has content and is scheduled (yellow) or if it's yellow (already scheduled) */}
                         {(() => {
-                          const note = calendarEvents[selectedNote.dayNum]?.[selectedNote.noteIndex]
-                          const noteKey = `${selectedNote.dayNum}-${selectedNote.noteIndex}`
+                          const { dayNum, noteIndex, year, month } = selectedNote
+                          const key = getCalendarKey(year, month, dayNum)
+                          const note = calendarEvents[key]?.[noteIndex]
+                          const noteKey = `${year}-${month}-${dayNum}-${noteIndex}`
                           const hasContent = calendarNoteContent[noteKey] && calendarNoteContent[noteKey].trim() !== ''
                           const isScheduled = note?.noteType === 'yellow'
                           const shouldShowTime = isScheduled || (note?.noteType === 'red' && hasContent)
@@ -2126,7 +2512,7 @@ export default function CreatePage() {
 
       case "drafts":
         return (
-            <div className="w-full max-w-none mx-0 overflow-hidden">
+            <div className="w-full max-w-none mx-0 overflow-hidden h-full flex flex-col">
             <h2 className="text-2xl font-bold mb-6">Bản nháp</h2>
               
               {/* Filter and Search Controls */}
@@ -2200,8 +2586,9 @@ export default function CreatePage() {
               </div>
             </div>
             
-            <div className="space-y-[1px]">
-              {filterAndSortPosts(draftPosts, draftSearchTerm, draftDateFilter, draftPlatformFilter).map((post) => (
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+              <div className="space-y-[1px]">
+                {filterAndSortPosts(draftPosts, draftSearchTerm, draftDateFilter, draftPlatformFilter).map((post) => (
                 <div 
                   key={post.id} 
                   className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
@@ -2243,14 +2630,15 @@ export default function CreatePage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )
 
       case "published":
         return (
-            <div className="w-full max-w-none mx-0 overflow-hidden">
+            <div className="w-full max-w-none mx-0 overflow-hidden h-full flex flex-col">
             <h2 className="text-2xl font-bold mb-6">Published Posts</h2>
               
               {/* Filter and Search Controls */}
@@ -2324,8 +2712,12 @@ export default function CreatePage() {
               </div>
             </div>
             
-            <div className="space-y-[1px]">
-              {filterAndSortPosts(publishedPosts, publishedSearchTerm, publishedDateFilter, publishedPlatformFilter).map((post) => (
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+              <div className="space-y-[1px]">
+                {(() => {
+                  const filteredPosts = filterAndSortPosts(publishedPosts, publishedSearchTerm, publishedDateFilter, publishedPlatformFilter)
+                  const maxWidth = getMaxProfileWidth(filteredPosts)
+                  return filteredPosts.map((post) => (
                 <div 
                   key={post.id} 
                   className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
@@ -2345,74 +2737,40 @@ export default function CreatePage() {
                       {post.platform === 'Pinterest' && <img src="/pinterest.svg" alt="Pinterest" className="w-[27px] h-[27px] flex-shrink-0" />}
                       <div className="text-white/90 truncate flex-1 min-w-0 max-w-[1050px]">{post.content}</div>
                     </div>
-                    {/* Right: date only */}
-                    <div className="flex items-center text-white/80 flex-shrink-0 ml-4">
-                      <span className="text-sm whitespace-nowrap">{post.date}</span>
+                    {/* Right: profile info and date */}
+                    <div className="flex flex-col items-start text-white/80 flex-shrink-0 ml-4" style={{ width: `${maxWidth}px` }}>
+                      <div className="flex items-center gap-2 mb-1 w-full">
+                        <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
+                          <img 
+                            src={getAccountsForPlatform(post.platform)[0]?.profilePic || "/shego.jpg"} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <span className="text-xs whitespace-nowrap">
+                          {getAccountsForPlatform(post.platform)[0]?.username || "Unknown Account"}
+                        </span>
+                      </div>
+                      <span className="text-xs whitespace-nowrap w-full">{post.date}</span>
                   </div>
                   </div>
                 </div>
-              ))}
+                ))
+                })()}
+              </div>
             </div>
-
-            {/* Draft Delete Confirmation Modal */}
-            {showDraftDeleteConfirm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-[#190F2F] rounded-lg p-6 w-80 border border-white/10">
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-white mb-4">Confirm delete</h3>
-                    <div className="flex gap-3 justify-center">
-                      <button
-                        onClick={handleDraftDeleteConfirm}
-                        className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600 transition-colors"
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={handleDraftDeleteCancel}
-                        className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition-colors"
-                      >
-                        No
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Retry Confirmation Modal */}
-            {showRetryConfirm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-6 w-80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-[#F5F5F7] mb-4">Thử lại?</h3>
-                    <div className="flex gap-3 justify-center">
-                      <button
-                        onClick={handleRetryCancel}
-                        className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition-colors"
-                      >
-                        Không
-                      </button>
-                      <button
-                        onClick={handleRetryConfirm}
-                        className="bg-[#E33265] text-white px-6 py-2 rounded hover:bg-[#E33265]/80 transition-colors"
-                      >
-                        Có
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
           </div>
         )
 
       case "failed":
         return (
-          <div className="w-full max-w-none mx-0 overflow-hidden">
+          <div className="w-full max-w-none mx-0 overflow-hidden h-full flex flex-col">
             <h2 className="text-2xl font-bold mb-6">Failed Posts</h2>
-            <div className="space-y-[1px]">
-              {failedPosts.map((post) => (
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+              <div className="space-y-[1px] pb-0">
+                {(() => {
+                  const maxWidth = getMaxProfileWidth(failedPosts)
+                  return failedPosts.map((post) => (
                 <div 
                   key={post.id} 
                   className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
@@ -2432,13 +2790,27 @@ export default function CreatePage() {
                       {post.platform === 'Pinterest' && <img src="/pinterest.svg" alt="Pinterest" className="w-[27px] h-[27px] flex-shrink-0" />}
                       <div className="text-white/90 truncate flex-1 min-w-0 max-w-[1050px]">{post.content}</div>
                     </div>
-                    {/* Right: date only */}
-                    <div className="flex items-center text-white/80 flex-shrink-0 ml-4">
-                      <span className="text-sm whitespace-nowrap">{post.date}</span>
+                    {/* Right: profile info and date */}
+                    <div className="flex flex-col items-start text-white/80 flex-shrink-0 ml-4" style={{ width: `${maxWidth}px` }}>
+                      <div className="flex items-center gap-2 mb-1 w-full">
+                        <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
+                          <img 
+                            src={getAccountsForPlatform(post.platform)[0]?.profilePic || "/shego.jpg"} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <span className="text-xs whitespace-nowrap">
+                          {getAccountsForPlatform(post.platform)[0]?.username || "Unknown Account"}
+                        </span>
+                      </div>
+                      <span className="text-xs whitespace-nowrap w-full">{post.date}</span>
                     </div>
                   </div>
                 </div>
-              ))}
+                ))
+                })()}
+              </div>
             </div>
           </div>
         )
@@ -2739,6 +3111,163 @@ export default function CreatePage() {
                     }}
                     className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] resize-none text-white placeholder:text-gray-400 focus:ring-0 focus:border-[#2A2A30] p-[10px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
                   />
+                  
+                  {/* Media Preview Area */}
+                  {uploadedMedia.length > 0 && (
+                    <div className="mt-4">
+                      <div className="relative bg-[#1E1E23] rounded-lg p-4 border border-[#3A3A42]">
+                        {/* Current Media Display */}
+                        <div className="relative">
+                          {uploadedMedia[currentMediaIndex]?.type === 'image' ? (
+                            <img 
+                              src={uploadedMedia[currentMediaIndex].preview} 
+                              alt="Uploaded media"
+                              className="w-full h-64 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="relative">
+                              <video 
+                                src={uploadedMedia[currentMediaIndex].preview} 
+                                className="w-full h-64 object-cover rounded-lg"
+                                controls
+                              />
+                              {/* Video Player Overlay Controls */}
+                              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <button className="p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors">
+                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                  </button>
+                                  <div className="flex-1 bg-white/20 rounded-full h-1 mx-2">
+                                    <div className="bg-white rounded-full h-1 w-1/3"></div>
+                                  </div>
+                                </div>
+                                <button className="p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Media Type Icon */}
+                          <div className="absolute top-2 right-2 bg-black/50 rounded-full p-2">
+                            {uploadedMedia[currentMediaIndex]?.type === 'image' ? (
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+                                <circle cx="9" cy="9" r="2"></circle>
+                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Video Controls Panel - Only for videos */}
+                        {uploadedMedia[currentMediaIndex]?.type === 'video' && (
+                          <div className="mt-4 space-y-4">
+                            {/* Preset Info */}
+                            <div className="text-center text-gray-400 text-sm">No Preset</div>
+                            
+                            {/* Language Selection */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-300">Language</span>
+                              <div className="flex items-center gap-2 bg-[#3A3A42] rounded-lg px-3 py-2">
+                                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByeD0iNCIgZmlsbD0iIzAwN0JGRiIvPgo8cGF0aCBkPSJNOCAxMkgxNk0xMiA4VjE2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K" alt="US Flag" className="w-4 h-4" />
+                                <span className="text-sm text-white">English</span>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                            
+                            {/* Multi-Speaker Theme */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-300">Multi-Speaker theme</span>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                  <path d="M12 17h.01"></path>
+                                </svg>
+                              </div>
+                              <div className="w-12 h-6 bg-gray-600 rounded-full relative">
+                                <div className="w-5 h-5 bg-gray-400 rounded-full absolute top-0.5 left-0.5 transition-transform"></div>
+                              </div>
+                            </div>
+                            
+                            {/* Translate Captions */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-300">Translate Captions</span>
+                                <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                </svg>
+                              </div>
+                              <div className="w-12 h-6 bg-gray-600 rounded-full relative">
+                                <div className="w-5 h-5 bg-gray-400 rounded-full absolute top-0.5 left-0.5 transition-transform"></div>
+                              </div>
+                            </div>
+                            
+                            {/* Generate Captions Button */}
+                            <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                              Generate captions
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Navigation Controls */}
+                        {uploadedMedia.length > 1 && (
+                          <div className="flex items-center justify-center mt-3 gap-4">
+                            <button
+                              onClick={() => setCurrentMediaIndex(prev => prev > 0 ? prev - 1 : uploadedMedia.length - 1)}
+                              className="p-2 rounded-full bg-[#3A3A42] hover:bg-[#4A4A52] transition-colors"
+                            >
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            
+                            <span className="text-sm text-gray-400">
+                              {currentMediaIndex + 1}/{uploadedMedia.length}
+                            </span>
+                            
+                            <button
+                              onClick={() => setCurrentMediaIndex(prev => prev < uploadedMedia.length - 1 ? prev + 1 : 0)}
+                              className="p-2 rounded-full bg-[#3A3A42] hover:bg-[#4A4A52] transition-colors"
+                            >
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Remove Media Button */}
+                        <button
+                          onClick={() => {
+                            const newMedia = uploadedMedia.filter((_, index) => index !== currentMediaIndex)
+                            setUploadedMedia(newMedia)
+                            if (currentMediaIndex >= newMedia.length && newMedia.length > 0) {
+                              setCurrentMediaIndex(newMedia.length - 1)
+                            } else if (newMedia.length === 0) {
+                              setCurrentMediaIndex(0)
+                            }
+                          }}
+                          className="absolute top-2 left-2 p-2 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
               </div>
 
               )}
@@ -3229,7 +3758,7 @@ export default function CreatePage() {
 
             {/* Video Upload Area */}
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                 isDragOver 
                   ? 'border-[#E33265] bg-[#E33265]/10' 
                   : 'border-gray-600 hover:border-gray-500'
@@ -3237,6 +3766,7 @@ export default function CreatePage() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              onClick={() => document.getElementById('video-upload')?.click()}
             >
               <div className="text-orange-400 mb-4">
                 <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3244,7 +3774,12 @@ export default function CreatePage() {
                 </svg>
               </div>
               <p className="text-white mb-2">
-                Drop or <button className="underline font-medium">browse your video</button>
+                Drop or <button 
+                  className="underline font-medium hover:text-gray-300 transition-colors"
+                  onClick={() => document.getElementById('video-upload')?.click()}
+                >
+                  browse your video
+                </button>
               </p>
               <p className="text-sm text-gray-400">
                 MP4 or MOV, Max length: 5.00 min Max size: 2GB
@@ -3266,21 +3801,60 @@ export default function CreatePage() {
               </label>
             </div>
 
-            {/* Sample Video Section */}
-            <div className="mt-6">
-              <p className="text-sm text-gray-400 mb-3">
-                Or try this sample video 👉
-              </p>
-              <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer">
-                <div className="w-16 h-12 bg-gray-700 rounded flex items-center justify-center">
-                  <PlayIcon className="w-4 h-4 text-gray-400" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-white">Demo</div>
-                  <div className="text-xs text-gray-400">32s</div>
+            {/* Selected Video Preview */}
+            {selectedVideoFile && videoPreview && (
+              <div className="mt-6">
+                <p className="text-sm text-gray-400 mb-3">
+                  Selected video:
+                </p>
+                <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
+                  <video 
+                    src={videoPreview} 
+                    className="w-16 h-12 bg-gray-700 rounded object-cover"
+                    controls={false}
+                    muted
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-white">{selectedVideoFile.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {(selectedVideoFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedVideoFile(null)
+                      setVideoPreview(null)
+                      // Reset the file input
+                      const input = document.getElementById('video-upload') as HTMLInputElement
+                      if (input) input.value = ''
+                    }}
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Sample Video Section */}
+            {!selectedVideoFile && (
+              <div className="mt-6">
+                <p className="text-sm text-gray-400 mb-3">
+                  Or try this sample video 👉
+                </p>
+                <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer">
+                  <div className="w-16 h-12 bg-gray-700 rounded flex items-center justify-center">
+                    <PlayIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-white">Demo</div>
+                    <div className="text-xs text-gray-400">32s</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3296,12 +3870,13 @@ export default function CreatePage() {
               </button>
             </div>
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                 isDragOverImage ? 'border-blue-400 bg-blue-400/10' : 'border-gray-600 hover:border-gray-500'
               }`}
               onDragOver={handleImageDragOver}
               onDragLeave={handleImageDragLeave}
               onDrop={handleImageDrop}
+              onClick={() => document.getElementById('image-upload')?.click()}
             >
               <div className="text-blue-400 mb-4">
                 <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3310,13 +3885,65 @@ export default function CreatePage() {
                   <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
                 </svg>
               </div>
-              <p className="text-white mb-2">Drop images or <button className="underline font-medium">browse</button></p>
+              <p className="text-white mb-2">Drop images or <button 
+                className="underline font-medium hover:text-gray-300 transition-colors"
+                onClick={() => document.getElementById('image-upload')?.click()}
+              >
+                browse
+              </button></p>
               <p className="text-sm text-gray-400">PNG or JPG, Max size: 10MB</p>
-              <input id="image-upload" type="file" accept="image/*" onChange={handleImageFileSelect} className="hidden" />
+              <input id="image-upload" type="file" accept="image/*" multiple onChange={handleImageFileSelect} className="hidden" />
               <label htmlFor="image-upload" className="cursor-pointer">
                 <span className="sr-only">Upload image</span>
               </label>
             </div>
+
+            {/* Selected Images Preview */}
+            {selectedImageFiles.length > 0 && (
+              <div className="mt-6">
+                <p className="text-sm text-gray-400 mb-3">
+                  Click on an image to add it to your post:
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {selectedImageFiles.map((file, index) => (
+                    <div 
+                      key={index} 
+                      className="relative group cursor-pointer"
+                      onClick={() => {
+                        // Add to main content area
+                        const newMedia = {
+                          type: 'image' as const,
+                          file,
+                          preview: imagePreviews[index]
+                        }
+                        setUploadedMedia(prev => [...prev, newMedia])
+                        
+                        // Close the popup
+                        setShowImageModal(false)
+                        
+                        // Clear the selected files
+                        setSelectedImageFiles([])
+                        setImagePreviews([])
+                        
+                        // Reset file input
+                        const input = document.getElementById('image-upload') as HTMLInputElement
+                        if (input) input.value = ''
+                      }}
+                    >
+                      <img 
+                        src={imagePreviews[index]} 
+                        alt={file.name}
+                        className="w-full h-20 object-cover rounded-lg hover:opacity-80 transition-opacity"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                        <div className="text-white text-sm font-medium">Add to Post</div>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1 truncate">{file.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3598,6 +4225,121 @@ export default function CreatePage() {
                 <PlayIcon className="w-4 h-4 mr-1" />
                 Đăng
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Retry Confirmation Modal */}
+      {showRetryConfirm && (() => {
+        const postToMove = failedPosts.find(post => post.id === postToRetry)
+        const failureReason = postToMove ? getFailureReason(postToMove) : null
+        
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-7 w-96 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-[#F5F5F7] mb-4">Thử lại?</h3>
+                
+                {failureReason && (
+                  <div className="mb-6 text-left">
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-red-300 font-medium mb-1">Lý do thất bại:</p>
+                          <p className="text-sm text-red-200">{failureReason.message}</p>
+                          {failureReason.type === 'character_limit' && (
+                            <div className="mt-2 text-xs text-gray-400">
+                              Hiện tại: {failureReason.currentLength} ký tự / {failureReason.limit} ký tự
+                            </div>
+                          )}
+                          {(failureReason.type === 'character_limit' || failureReason.type === 'policy') && (
+                            <div className="mt-2 text-xs text-blue-300">
+                              ✏️ Sẽ mở trong tab chỉnh sửa để bạn có thể sửa nội dung
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={handleRetryCancel}
+                    className="bg-gray-600 text-white px-6 py-2 w-30 rounded hover:bg-gray-700 transition-colors"
+                  >
+                    Không
+                  </button>
+                  <button
+                    onClick={handleRetryConfirm}
+                    className="bg-[#E33265] text-white px-6 py-2 w-30 rounded hover:bg-[#E33265]/80 transition-colors"
+                  >
+                    Có
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Retry Loading Modal */}
+      {showRetryLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-8 w-80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+            <div className="text-center">
+              <div className="mb-4">
+                {/* Animated loading spinner */}
+                <div className="inline-block w-8 h-8 border-4 border-[#E33265]/30 border-t-[#E33265] rounded-full animate-spin"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-[#F5F5F7] mb-2">Đang thử lại...</h3>
+              <p className="text-sm text-gray-400">Vui lòng chờ trong giây lát</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Retry Result Modal */}
+      {showRetryResult && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-8 w-80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+            <div className="text-center">
+              <div className="mb-4">
+                {retrySuccess ? (
+                  <div className="w-16 h-16 mx-auto bg-green-500/20 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <h3 className="text-lg font-semibold text-[#F5F5F7] mb-2">
+                {retrySuccess ? "Published!" : "Failed"}
+              </h3>
+              <p className="text-sm text-gray-400 mb-6">
+                {retrySuccess 
+                  ? "Bài viết đã được đăng thành công!" 
+                  : retryFailureReason
+                }
+              </p>
+              <button
+                onClick={handleRetryResultClose}
+                className="bg-[#E33265] text-white px-6 py-2 rounded hover:bg-[#E33265]/80 transition-colors"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>
