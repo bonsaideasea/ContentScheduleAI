@@ -55,6 +55,81 @@ export default function CreatePage() {
       setActiveSection(s as any)
     }
   }, [searchParams])
+
+  // localStorage persistence functions
+  const saveToLocalStorage = (key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data))
+    } catch (error) {
+      console.error('Error saving to localStorage:', error)
+    }
+  }
+
+  const loadFromLocalStorage = (key: string, defaultValue: any) => {
+    try {
+      const saved = localStorage.getItem(key)
+      return saved ? JSON.parse(saved) : defaultValue
+    } catch (error) {
+      console.error('Error loading from localStorage:', error)
+      return defaultValue
+    }
+  }
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    // Load open posts
+    const savedOpenPosts = loadFromLocalStorage('openPosts', [])
+    if (savedOpenPosts.length > 0) {
+      setOpenPosts(savedOpenPosts)
+    }
+
+    // Load post contents
+    const savedPostContents = loadFromLocalStorage('postContents', {})
+    if (Object.keys(savedPostContents).length > 0) {
+      setPostContents(savedPostContents)
+    }
+
+    // Load calendar events
+    const savedCalendarEvents = loadFromLocalStorage('calendarEvents', {})
+    if (Object.keys(savedCalendarEvents).length > 0) {
+      setCalendarEvents(savedCalendarEvents)
+    }
+
+    // Remove the green YouTube note on day 26 if it exists
+    if (savedCalendarEvents[26]) {
+      const updatedEvents = { ...savedCalendarEvents }
+      updatedEvents[26] = updatedEvents[26].filter(note => 
+        !(note.platform === 'YouTube' && note.noteType === 'green')
+      )
+      if (updatedEvents[26].length === 0) {
+        delete updatedEvents[26]
+      }
+      setCalendarEvents(updatedEvents)
+      saveToLocalStorage('calendarEvents', updatedEvents)
+    }
+
+    // Clear draft posts localStorage to show hardcoded data
+    localStorage.removeItem('draftPosts')
+    
+    // Load draft posts - only if there's existing data in localStorage
+    const savedDraftPosts = loadFromLocalStorage('draftPosts', [])
+    if (savedDraftPosts.length > 0) {
+      setDraftPosts(savedDraftPosts)
+    }
+    // If no saved data, keep the hardcoded draft posts from initial state
+
+    // Load published posts
+    const savedPublishedPosts = loadFromLocalStorage('publishedPosts', [])
+    if (savedPublishedPosts.length > 0) {
+      setPublishedPosts(savedPublishedPosts)
+    }
+
+    // Load failed posts
+    const savedFailedPosts = loadFromLocalStorage('failedPosts', [])
+    if (savedFailedPosts.length > 0) {
+      setFailedPosts(savedFailedPosts)
+    }
+  }, [])
   // Publish modal state
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState("Twitter")
@@ -268,6 +343,22 @@ export default function CreatePage() {
   // Publish confirmation state
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
   const [publishedPosts, setPublishedPosts] = useState<Array<{ id: number; content: string; platform: string; date: string; status: string }>>([])
+  const [failedPosts, setFailedPosts] = useState<Array<{ id: number; content: string; platform: string; date: string; error: string }>>([
+    {
+      id: 1,
+      content: "Just finished reading an amazing book that completely changed my perspective on life. Sometimes the best adventures happen between the pages of a good book. What's everyone reading lately? 📚✨",
+      platform: "Facebook",
+      date: "2024-01-15",
+      error: "Network timeout"
+    },
+    {
+      id: 2,
+      content: "Coffee mugs are seriously underrated. There's something magical about finding the perfect mug that fits your hands just right. It's like a warm hug every morning ☕️💕",
+      platform: "Instagram",
+      date: "2024-01-14",
+      error: "Authentication failed"
+    }
+  ])
   // Removed experimental calendar UI flag
   // Helper: Vietnamese month names "Tháng 1" .. "Tháng 12"
   const vietnameseMonths = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`)
@@ -286,7 +377,7 @@ export default function CreatePage() {
     console.log('Drag start triggered for day:', dayNum, 'note:', noteIndex)
     const event = calendarEvents[dayNum]?.[noteIndex]
     console.log('Event data:', event)
-    // Allow dragging only for to-be-published notes (yellow or red). Published (green) is locked.
+    // Allow dragging only for scheduled (yellow) and not scheduled (red) notes. Published (green) is locked.
     if (event && (event.noteType === 'yellow' || event.noteType === 'red')) {
       console.log('Note is draggable, setting up drag data')
       const eventData = {
@@ -348,10 +439,14 @@ export default function CreatePage() {
           })
           
           // Add to new day
-          setCalendarEvents(prev => ({
+          setCalendarEvents(prev => {
+            const updatedEvents = {
             ...prev,
             [dayNum]: [...(prev[dayNum] || []), event]
-          }))
+            }
+            saveToLocalStorage('calendarEvents', updatedEvents)
+            return updatedEvents
+          })
           
           return
         } catch (error) {
@@ -366,12 +461,16 @@ export default function CreatePage() {
           platform: draggedIcon,
           time: '10:00',
           status: 'not scheduled',
-          noteType: 'yellow' as 'red' | 'yellow' | 'green'
+          noteType: 'red' as 'red' | 'yellow' | 'green'
         }
-        setCalendarEvents(prev => ({
+        setCalendarEvents(prev => {
+          const updatedEvents = {
           ...prev,
           [dayNum]: [...(prev[dayNum] || []), newEvent]
-        }))
+          }
+          saveToLocalStorage('calendarEvents', updatedEvents)
+          return updatedEvents
+        })
       }
     } else {
       console.log('Drop rejected - past date')
@@ -381,78 +480,119 @@ export default function CreatePage() {
 
   // Calendar note popup handlers
   const handleNoteClick = (dayNum: number, noteIndex: number, event: React.MouseEvent) => {
+    console.log('handleNoteClick called for day:', dayNum, 'noteIndex:', noteIndex)
     // Get the note to check its type
     const note = calendarEvents[dayNum]?.[noteIndex]
+    console.log('Note found:', note)
     
     // Don't show popup if no note
     if (!note) {
+      console.log('No note found, returning')
       return
     }
     
     const rect = event.currentTarget.getBoundingClientRect()
-    const popupWidth = 200 // Approximate popup width
-    const popupHeight = 120 // Approximate popup height
+    console.log('Calendar note rect:', rect)
+    const popupWidth = 250 // More accurate popup width
+    const popupHeight = 150 // More accurate popup height
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
+    const margin = 10 // Minimum margin from viewport edges
     
-    let x = rect.right + 2
+    // Calculate initial position (prefer right side) - 10px away from the note
+    let x = rect.right + 10
     let y = rect.top
+    console.log('Initial popup position:', { x, y })
     
-    // Adjust horizontal position if popup would go off-screen
-    if (x + popupWidth > viewportWidth) {
-      x = rect.left - popupWidth - 2
+    // Check if popup would overflow horizontally
+    if (x + popupWidth > viewportWidth - margin) {
+      // Try left side - 10px away from the note
+      x = rect.left - popupWidth - 10
+      // If still overflows, center it horizontally
+      if (x < margin) {
+        x = Math.max(margin, (viewportWidth - popupWidth) / 2)
+      }
     }
     
-    // Adjust vertical position if popup would go off-screen
-    if (y + popupHeight > viewportHeight) {
-      // Position popup above the calendar note instead of below
-      y = rect.top - popupHeight - 5
+    // Check if popup would overflow vertically
+    if (y + popupHeight > viewportHeight - margin) {
+      // Try above the note - 10px away from the note
+      y = rect.top - popupHeight - 10
+      // If still overflows, center it vertically
+      if (y < margin) {
+        y = Math.max(margin, (viewportHeight - popupHeight) / 2)
+      }
     }
     
-    // Ensure popup doesn't go above viewport
-    if (y < 10) {
-      y = 10
-    }
-    
-    // Ensure popup doesn't go left of viewport
-    if (x < 10) {
-      x = 10
-    }
+    // Final bounds checking to ensure popup is always visible
+    x = Math.max(margin, Math.min(x, viewportWidth - popupWidth - margin))
+    y = Math.max(margin, Math.min(y, viewportHeight - popupHeight - margin))
     
     setNotePopupPosition({ x, y })
     setSelectedNote({dayNum, noteIndex})
     setShowNotePopup(true)
-    // Set current time from the note
-    if (note) {
-      const timeParts = note.time.split(':')
-      const hour = parseInt(timeParts[0])
+    // Set current time from user's local time
+    const now = new Date()
+    const hours24 = now.getHours()
+    const minutes = now.getMinutes()
+    const ampm: 'AM' | 'PM' = hours24 >= 12 ? 'PM' : 'AM'
+    const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12
+    const hh = String(hours12).padStart(2, '0')
+    const mm = String(minutes).padStart(2, '0')
       setNoteTime({
-        hour: hour > 12 ? (hour - 12).toString().padStart(2, '0') : hour.toString().padStart(2, '0'),
-        minute: timeParts[1],
-        amPm: hour >= 12 ? 'PM' : 'AM'
-      })
-    }
+      hour: hh,
+      minute: mm,
+      amPm: ampm
+    })
   }
 
   const handleDeleteClick = () => {
+    console.log('Delete button clicked, selectedNote:', selectedNote)
+    console.log('showDeleteConfirm will be set to true')
     setShowDeleteConfirm(true)
   }
 
   const handleConfirmDelete = () => {
+    console.log('handleConfirmDelete called, selectedNote:', selectedNote)
     if (selectedNote) {
+      console.log('Deleting note from day:', selectedNote.dayNum, 'index:', selectedNote.noteIndex)
+      
+      // Get current calendar events
+      const currentEvents = calendarEvents
+      console.log('Current calendar events before delete:', currentEvents)
+      
       setCalendarEvents(prev => {
         const newEvents = {...prev}
+        console.log('Previous events in setState:', prev)
+        
         if (newEvents[selectedNote.dayNum]) {
-          newEvents[selectedNote.dayNum] = newEvents[selectedNote.dayNum].filter((_, index) => index !== selectedNote.noteIndex)
+          console.log('Events for day', selectedNote.dayNum, ':', newEvents[selectedNote.dayNum])
+          newEvents[selectedNote.dayNum] = newEvents[selectedNote.dayNum].filter((_, index) => {
+            console.log('Checking index', index, 'against', selectedNote.noteIndex)
+            return index !== selectedNote.noteIndex
+          })
+          console.log('Events after filter:', newEvents[selectedNote.dayNum])
+          
           if (newEvents[selectedNote.dayNum].length === 0) {
+            console.log('No events left for day', selectedNote.dayNum, ', deleting day')
             delete newEvents[selectedNote.dayNum]
           }
+        } else {
+          console.log('No events found for day', selectedNote.dayNum)
         }
+        
+        console.log('Final updated calendar events:', newEvents)
+        saveToLocalStorage('calendarEvents', newEvents)
         return newEvents
       })
+      
+      // Close both the note popup and delete confirmation
       setShowNotePopup(false)
       setSelectedNote(null)
       setShowDeleteConfirm(false)
+      console.log('Delete confirmation closed')
+    } else {
+      console.log('No selectedNote found, cannot delete')
     }
   }
 
@@ -493,10 +633,54 @@ export default function CreatePage() {
     setShowDraftDeleteConfirm(true)
   }
 
+  // Handle retry click for failed posts
+  const handleRetryClick = (id: number) => {
+    setPostToRetry(id)
+    setShowRetryConfirm(true)
+  }
+
+  // Handle retry confirmation
+  const handleRetryConfirm = () => {
+    if (postToRetry) {
+      // Remove from failed posts
+      const updatedFailedPosts = failedPosts.filter(post => post.id !== postToRetry)
+      setFailedPosts(updatedFailedPosts)
+      saveToLocalStorage('failedPosts', updatedFailedPosts)
+      
+      // Add to drafts for retry
+      const postToMove = failedPosts.find(post => post.id === postToRetry)
+      if (postToMove) {
+        const newDraft = {
+          id: Date.now(), // New ID for draft
+          content: postToMove.content,
+          platform: postToMove.platform,
+          platformIcon: postToMove.platform,
+          date: new Date().toISOString().split('T')[0],
+          status: 'draft'
+        }
+        const updatedDrafts = [...draftPosts, newDraft]
+        setDraftPosts(updatedDrafts)
+        saveToLocalStorage('draftPosts', updatedDrafts)
+      }
+    }
+    setShowRetryConfirm(false)
+    setPostToRetry(null)
+  }
+
+  // Handle retry cancellation
+  const handleRetryCancel = () => {
+    setShowRetryConfirm(false)
+    setPostToRetry(null)
+  }
+
   // Handle draft delete confirmation
   const handleDraftDeleteConfirm = () => {
     if (draftToDelete) {
-      setDraftPosts(prev => prev.filter(draft => draft.id !== draftToDelete))
+      setDraftPosts(prev => {
+        const updatedDrafts = prev.filter(draft => draft.id !== draftToDelete)
+        saveToLocalStorage('draftPosts', updatedDrafts)
+        return updatedDrafts
+      })
       setShowDraftDeleteConfirm(false)
       setDraftToDelete(null)
     }
@@ -511,6 +695,9 @@ export default function CreatePage() {
   // Click outside to close popup
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Don't clear selectedNote if delete confirmation is open
+      if (showDeleteConfirm) return
+      
       if (notePopupRef.current && !notePopupRef.current.contains(event.target as Node)) {
         setShowNotePopup(false)
         setSelectedNote(null)
@@ -524,19 +711,30 @@ export default function CreatePage() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showNotePopup])
+  }, [showNotePopup, showDeleteConfirm])
 
   const handleUpdateTime = () => {
     if (selectedNote) {
-      const newTime = `${noteTime.hour}:${noteTime.minute}`
-      setCalendarEvents(prev => ({
+      // Convert 12-hour format to 24-hour format for storage
+      let hour24 = parseInt(noteTime.hour)
+      if (noteTime.amPm === 'PM' && hour24 !== 12) {
+        hour24 += 12
+      } else if (noteTime.amPm === 'AM' && hour24 === 12) {
+        hour24 = 0
+      }
+      const newTime = `${hour24.toString().padStart(2, '0')}:${noteTime.minute}`
+      setCalendarEvents(prev => {
+        const updatedEvents = {
         ...prev,
         [selectedNote.dayNum]: prev[selectedNote.dayNum].map((note, index) => 
           index === selectedNote.noteIndex 
             ? {...note, time: newTime}
             : note
         )
-      }))
+        }
+        saveToLocalStorage('calendarEvents', updatedEvents)
+        return updatedEvents
+      })
       setShowNotePopup(false)
       setSelectedNote(null)
     }
@@ -802,14 +1000,244 @@ export default function CreatePage() {
   const [isDragOverImage, setIsDragOverImage] = useState(false)
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [chatInput, setChatInput] = useState("")
-  function submitChat() {
+  const [isTyping, setIsTyping] = useState(false)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
+
+  // Function to detect if message is gibberish or meaningless
+  function isGibberish(text: string): boolean {
+    const cleanText = text.toLowerCase().replace(/[^a-z\s]/g, '')
+    const words = cleanText.split(/\s+/).filter(word => word.length > 0)
+    
+    if (words.length === 0) return true
+    
+    // Check for obvious gibberish patterns
+    const hasRepeatedChars = /(.)\1{4,}/.test(text) // More than 4 repeated chars
+    const hasRandomSequence = /[a-z]{12,}/.test(cleanText) && !hasRepeatedChars // Very long sequences
+    
+    // Check for common English words to validate the message
+    const commonWords = [
+      'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+      'make', 'create', 'post', 'about', 'help', 'want', 'need', 'like', 'love',
+      'facebook', 'twitter', 'instagram', 'youtube', 'tiktok', 'linkedin', 'threads',
+      'hunger', 'food', 'coffee', 'work', 'life', 'fun', 'happy', 'sad', 'good', 'bad'
+    ]
+    
+    const hasCommonWords = words.some(word => commonWords.includes(word))
+    
+    // Only consider it gibberish if it has obvious patterns AND no common words
+    return (hasRepeatedChars || hasRandomSequence) && !hasCommonWords
+  }
+
+  // Function to detect if user wants to create a post
+  function shouldCreatePost(userMessage: string): boolean {
+    const message = userMessage.toLowerCase().trim()
+    const createPostKeywords = [
+      'yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'create', 'make', 'write', 'post',
+      'help me', 'help', 'assist', 'generate', 'draft', 'content', 'social media',
+      'facebook', 'twitter', 'x', 'threads', 'instagram', 'linkedin', 'tiktok', 'youtube',
+      'bluesky', 'bsky', 'pinterest', 'pinterest'
+    ]
+    
+    return createPostKeywords.some(keyword => message.includes(keyword))
+  }
+
+  // Function to detect platform from user message
+  function detectPlatform(userMessage: string): string | null {
+    const message = userMessage.toLowerCase().trim()
+    
+    if (message.includes('facebook') || message.includes('fb')) return 'Facebook'
+    if (message.includes('twitter') || message.includes('x')) return 'Twitter'
+    if (message.includes('threads')) return 'Threads'
+    if (message.includes('instagram') || message.includes('ig')) return 'Instagram'
+    if (message.includes('linkedin')) return 'LinkedIn'
+    if (message.includes('tiktok')) return 'TikTok'
+    if (message.includes('youtube') || message.includes('yt')) return 'YouTube'
+    if (message.includes('pinterest')) return 'Pinterest'
+    if (message.includes('bluesky') || message.includes('bsky')) return 'Bluesky'
+    
+    return null
+  }
+
+  // Function to generate AI content for social media posts
+  function generatePostContent(userMessage: string, platform: string): string {
+    const message = userMessage.toLowerCase().trim()
+    
+    // Extract key topics from the message
+    const topics = message.split(' ').filter(word => word.length > 3)
+    
+    // Generate platform-specific content
+    switch (platform) {
+      case 'Twitter':
+        return `🚀 Just had a thought about ${topics[0] || 'this topic'}...\n\n${userMessage}\n\nWhat do you think? Drop your thoughts below! 👇\n\n#${topics[0] || 'thoughts'} #discussion #community`
+      
+      case 'Facebook':
+        return `Hey everyone! 👋\n\nI wanted to share something that's been on my mind: ${userMessage}\n\nI'd love to hear your thoughts and experiences on this. Have any of you had similar thoughts or experiences?\n\nLet's start a conversation! 💬`
+      
+      case 'Instagram':
+        return `✨ ${userMessage}\n\nSometimes the simplest thoughts can spark the biggest conversations. What's your take on this? 🤔\n\n#${topics[0] || 'thoughts'} #community #discussion #mindfulness`
+      
+      case 'LinkedIn':
+        return `Professional insight: ${userMessage}\n\nIn my experience, this perspective has been valuable for understanding our industry better. I'm curious about your thoughts and how this might apply to your work.\n\nWhat are your thoughts on this topic?`
+      
+      case 'Threads':
+        return `Just thinking out loud here...\n\n${userMessage}\n\nAnyone else feel this way? Would love to hear different perspectives! 🧵`
+      
+      case 'TikTok':
+        return `POV: You're scrolling and see this thought\n\n${userMessage}\n\nBut honestly, what do you think? Drop your hot takes! 🔥\n\n#fyp #thoughts #discussion`
+      
+      case 'Bluesky':
+        return `Just thinking out loud...\n\n${userMessage}\n\nWhat's your take on this? The conversation is open! 🌟\n\n#thoughts #discussion #community`
+      
+      case 'Pinterest':
+        return `💭 ${userMessage}\n\nSometimes the best ideas come from simple thoughts. What do you think about this? Pin your thoughts below! 📌\n\n#${topics[0] || 'thoughts'} #ideas #discussion`
+      
+      case 'YouTube':
+        return `🎥 ${userMessage}\n\nWhat do you think about this topic? I'd love to hear your thoughts in the comments below! Don't forget to like and subscribe if you found this helpful! 👍\n\n#${topics[0] || 'thoughts'} #discussion #community #youtube`
+      
+      default:
+        return `Just sharing a thought: ${userMessage}\n\nWhat's your perspective on this? I'd love to hear your thoughts! 💭`
+    }
+  }
+
+  // Function to generate intelligent LLM response
+  function generateLLMResponse(userMessage: string): { response: string; shouldCreatePost: boolean; platform?: string; postContent?: string } {
+    const message = userMessage.toLowerCase().trim()
+    
+    // Check if it's gibberish
+    if (isGibberish(userMessage)) {
+      return {
+        response: "Hi! It looks like your message might have been typed by accident or is a placeholder. Could you please clarify or resend the message you'd like help with? I'd love to assist you with refining or brainstorming your social media post!",
+        shouldCreatePost: false
+      }
+    }
+    
+    // Check if user wants to create a post
+    const wantsToCreate = shouldCreatePost(userMessage)
+    const detectedPlatform = detectPlatform(userMessage)
+    
+    // Check for common social media content topics
+    const socialMediaKeywords = [
+      'coffee', 'food', 'travel', 'work', 'life', 'fun', 'happy', 'sad', 'excited', 'tired',
+      'weather', 'music', 'movie', 'book', 'game', 'sport', 'fitness', 'fashion', 'beauty',
+      'family', 'friend', 'love', 'relationship', 'job', 'career', 'school', 'study',
+      'shopping', 'sale', 'deal', 'discount', 'new', 'old', 'best', 'worst', 'favorite',
+      'opinion', 'think', 'believe', 'feel', 'like', 'hate', 'love', 'want', 'need'
+    ]
+    
+    const hasSocialKeywords = socialMediaKeywords.some(keyword => 
+      message.includes(keyword)
+    )
+    
+    // If user wants to create a post or mentions a platform
+    if (wantsToCreate || detectedPlatform) {
+      const platform = detectedPlatform || 'Facebook' // Default to Facebook if no platform specified
+      const postContent = generatePostContent(userMessage, platform)
+      
+      let response = "Perfect! I'll create a new post for you"
+      if (detectedPlatform) {
+        response += ` on ${platform}`
+      }
+      response += ". I've generated some content based on what you shared - you can edit it however you'd like!"
+      
+      return {
+        response,
+        shouldCreatePost: true,
+        platform,
+        postContent
+      }
+    }
+    
+    // Generate contextual response based on content
+    if (hasSocialKeywords || message.length > 10) {
+      // Extract potential topics
+      const topics = socialMediaKeywords.filter(keyword => 
+        message.includes(keyword)
+      )
+      
+      let response = "Interesting take! "
+      
+      if (topics.includes('coffee')) {
+        response += "Not everyone loves the smell of coffee—in fact, while many people find it comforting or energizing, others can be turned off by its strong, roasted scent. If you're sharing this on social media, maybe lean into the unexpected opinion! Something like:\n\n\"Unpopular opinion: coffee smells terrible. I said what I said. ☕🚫\"\n\nThat kind of bold, casual statement often sparks fun debate and engagement. Want help crafting a post with a little humor or edge to it?"
+      } else if (topics.includes('food')) {
+        response += "Food content always performs well on social media! Whether you're sharing a recipe, restaurant review, or just your thoughts on a meal, people love to engage with food posts. What's your angle? Are you reviewing something, sharing a cooking tip, or just expressing your feelings about it?"
+      } else if (topics.includes('work') || topics.includes('job') || topics.includes('career')) {
+        response += "Work and career content resonates with so many people! Whether it's celebrating a win, venting about challenges, or sharing insights, professional content often gets great engagement. What aspect of work life are you thinking about sharing?"
+      } else if (topics.includes('travel')) {
+        response += "Travel content is gold for social media! People love seeing new places, getting travel tips, or living vicariously through others' adventures. Are you planning a trip, reminiscing about one, or sharing travel advice?"
+      } else if (topics.includes('fitness') || topics.includes('workout')) {
+        response += "Fitness content has such an engaged community! Whether it's motivation, tips, or just sharing your journey, fitness posts often inspire others. What's your fitness story or tip you want to share?"
+      } else {
+        response += `That's a great topic for social media! "${userMessage}" could definitely spark some interesting conversations. What's your main point or angle? Are you looking to inform, entertain, or start a discussion? I can help you craft it into an engaging post!`
+      }
+      
+      return { response, shouldCreatePost: false }
+    } else {
+      // Short or unclear messages
+      return {
+        response: `I see you mentioned "${userMessage}" - that could be a great starting point for a social media post! Could you tell me more about what you're thinking? Are you looking to share an experience, ask a question, or start a conversation about it?`,
+        shouldCreatePost: false
+      }
+    }
+  }
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
+    }
+  }, [chatMessages, isTyping])
+
+  async function submitChat() {
     const text = chatInput.trim()
     if (!text) return
+    
+    // Add user message
     setChatMessages((prev) => [...prev, { role: "user", content: text }])
     setChatInput("")
     
-    // Add ChatGPT response (placeholder for now)
-    // Optionally handle assistant response later
+    // Show typing indicator
+    setIsTyping(true)
+    
+    // Simulate typing delay (1-3 seconds)
+    const delay = Math.random() * 2000 + 1000
+    await new Promise(resolve => setTimeout(resolve, delay))
+    
+    // Generate AI response and check if we should create a post
+    const aiResponse = generateLLMResponse(text)
+    setChatMessages((prev) => [...prev, { role: "assistant", content: aiResponse.response }])
+    
+    // If AI suggests creating a post, create it
+    if (aiResponse.shouldCreatePost && aiResponse.platform && aiResponse.postContent) {
+      // Create new post
+      const newPostId = Date.now()
+      const newPost = {
+        id: newPostId,
+        type: aiResponse.platform
+      }
+      
+      // Add to open posts
+      const updatedOpenPosts = [...openPosts, newPost]
+      setOpenPosts(updatedOpenPosts)
+      saveToLocalStorage('openPosts', updatedOpenPosts)
+      
+      // Set as selected post
+      setSelectedPostId(newPostId)
+      
+      // Set the AI-generated content
+      const updatedPostContents = {
+        ...postContents,
+        [newPostId]: aiResponse.postContent!
+      }
+      setPostContents(updatedPostContents)
+      saveToLocalStorage('postContents', updatedPostContents)
+      
+      // Close any open post picker
+      setShowPostPicker(false)
+      setIsPostPickerVisible(false)
+    }
+    
+    // Hide typing indicator
+    setIsTyping(false)
   }
 
   const characterLimits = {
@@ -826,8 +1254,111 @@ export default function CreatePage() {
   }
 
 
+  // Filter and search states
+  const [draftSearchTerm, setDraftSearchTerm] = useState("")
+  const [draftDateFilter, setDraftDateFilter] = useState("newest")
+  const [draftPlatformFilter, setDraftPlatformFilter] = useState("all")
+  const [publishedSearchTerm, setPublishedSearchTerm] = useState("")
+  const [publishedDateFilter, setPublishedDateFilter] = useState("newest")
+  const [publishedPlatformFilter, setPublishedPlatformFilter] = useState("all")
+  const [showDraftPlatformDropdown, setShowDraftPlatformDropdown] = useState(false)
+  const [showPublishedPlatformDropdown, setShowPublishedPlatformDropdown] = useState(false)
+  const [showRetryConfirm, setShowRetryConfirm] = useState(false)
+  const [postToRetry, setPostToRetry] = useState<number | null>(null)
+
+  // Filter and sort functions
+  const filterAndSortPosts = (posts: any[], searchTerm: string, dateFilter: string, platformFilter: string) => {
+    let filtered = posts.filter(post => {
+      const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        post.platform.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesPlatform = platformFilter === "all" || !platformFilter || post.platform.toLowerCase() === platformFilter.toLowerCase()
+      
+      return matchesSearch && matchesPlatform
+    })
+
+    if (dateFilter === "newest") {
+      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    } else if (dateFilter === "oldest") {
+      filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    }
+
+    return filtered
+  }
+
+  // Platform options for dropdown
+  const platformOptions = [
+    { value: "all", label: "All Platforms", icon: null },
+    { value: "facebook", label: "Facebook", icon: "/fb.svg" },
+    { value: "instagram", label: "Instagram", icon: "/instagram.png" },
+    { value: "twitter", label: "Twitter", icon: "/x.png" },
+    { value: "linkedin", label: "LinkedIn", icon: "/link.svg" },
+    { value: "pinterest", label: "Pinterest", icon: "/pinterest.svg" },
+    { value: "tiktok", label: "TikTok", icon: "/tiktok.png" },
+    { value: "threads", label: "Threads", icon: "/threads.png" },
+    { value: "bluesky", label: "Bluesky", icon: "/bluesky.png" },
+    { value: "youtube", label: "YouTube", icon: "/ytube.png" }
+  ]
+
   // Draft posts state so new drafts appear in the Drafts section
-  const [draftPosts, setDraftPosts] = useState<Array<{ id: number; content: string; platform: string; platformIcon?: string; date: string; status: string }>>([])
+  const [draftPosts, setDraftPosts] = useState<Array<{ id: number; content: string; platform: string; platformIcon?: string; date: string; status: string }>>([
+    {
+      id: 1,
+      content: "Just finished reading an amazing book that completely changed my perspective on life. Sometimes the best adventures happen between the pages of a good book. What's everyone reading lately? 📚✨",
+      platform: "Facebook",
+      platformIcon: "Facebook",
+      date: "2024-01-15",
+      status: "draft"
+    },
+    {
+      id: 2,
+      content: "Coffee mugs are seriously underrated. There's something magical about finding the perfect mug that fits your hands just right. It's like a warm hug every morning ☕️💕",
+      platform: "Instagram",
+      platformIcon: "Instagram",
+      date: "2024-01-14",
+      status: "draft"
+    },
+    {
+      id: 3,
+      content: "Waking up early is hard, but there's something peaceful about watching the sunrise. The world feels quieter, more hopeful. Early birds, what's your secret? 🌅",
+      platform: "Twitter",
+      platformIcon: "Twitter",
+      date: "2024-01-13",
+      status: "draft"
+    },
+    {
+      id: 4,
+      content: "If I could fly on a broom, I'd definitely choose a sunset flight over the city. The view from up there must be incredible! ✨🧹 #MagicalThinking",
+      platform: "TikTok",
+      platformIcon: "TikTok",
+      date: "2024-01-12",
+      status: "draft"
+    },
+    {
+      id: 5,
+      content: "Dancing at midnight hits different. There's something liberating about moving to music when the world is asleep. Who else loves a good midnight dance session? 💃🌙",
+      platform: "YouTube",
+      platformIcon: "YouTube",
+      date: "2024-01-11",
+      status: "draft"
+    },
+    {
+      id: 6,
+      content: "The freedom to buy whatever you want (within reason) is such a luxury. Sometimes it's the small things that bring the most joy. What's something small that made you happy today? 🛍️💫",
+      platform: "LinkedIn",
+      platformIcon: "LinkedIn",
+      date: "2024-01-10",
+      status: "draft"
+    },
+    {
+      id: 7,
+      content: "Speaking kindly costs nothing but means everything. A simple 'thank you' or 'you're doing great' can completely change someone's day. Let's spread more kindness today 💝",
+      platform: "Threads",
+      platformIcon: "Threads",
+      date: "2024-01-09",
+      status: "draft"
+    }
+  ])
 
   function handleSaveDraft() {
     const active = openPosts.find((p) => p.id === selectedPostId)
@@ -861,12 +1392,20 @@ export default function CreatePage() {
     
     if (existingDraftIndex !== -1) {
       // Update existing draft
-      setDraftPosts(prev => prev.map((draft, index) => 
+      setDraftPosts(prev => {
+        const updatedDrafts = prev.map((draft, index) => 
         index === existingDraftIndex ? newDraft : draft
-      ))
+        )
+        saveToLocalStorage('draftPosts', updatedDrafts)
+        return updatedDrafts
+      })
     } else {
       // Create new draft only if none exists for this platform
-      setDraftPosts(prev => [...prev, newDraft])
+      setDraftPosts(prev => {
+        const updatedDrafts = [...prev, newDraft]
+        saveToLocalStorage('draftPosts', updatedDrafts)
+        return updatedDrafts
+      })
     }
   }
 
@@ -916,24 +1455,43 @@ export default function CreatePage() {
       return
     }
 
-    // If scheduled for later, create a RED calendar note (to-be-published)
+    // If scheduled for later, create a YELLOW calendar note (scheduled)
     if (publishTime === "pick a time" && selectedDate && selectedTime) {
       const scheduledDate = new Date(selectedDate)
       const dayNum = scheduledDate.getDate()
       
+      // Convert selectedTime from 12-hour to 24-hour format for storage
+      const timeParts = selectedTime.split(' ')
+      const timeOnly = timeParts[0] // "11:34"
+      const ampm = timeParts[1] // "PM"
+      const [hourStr, minuteStr] = timeOnly.split(':')
+      let hour24 = parseInt(hourStr)
+      
+      if (ampm === 'PM' && hour24 !== 12) {
+        hour24 += 12
+      } else if (ampm === 'AM' && hour24 === 12) {
+        hour24 = 0
+      }
+      
+      const time24Hour = `${hour24.toString().padStart(2, '0')}:${minuteStr}`
+      
       // Create calendar note
       const calendarNote = {
         platform: selectedPlatform,
-        time: selectedTime,
-        status: `scheduled for ${selectedTime}`,
-        noteType: 'red' as const
+        time: time24Hour,
+        status: `scheduled ${selectedTime}`,
+        noteType: 'yellow' as const
       }
       
       // Add to calendar events
-      setCalendarEvents(prev => ({
+      setCalendarEvents(prev => {
+        const updatedEvents = {
         ...prev,
         [dayNum]: [...(prev[dayNum] || []), calendarNote]
-      }))
+        }
+        saveToLocalStorage('calendarEvents', updatedEvents)
+        return updatedEvents
+      })
       
       // Save content to calendar note
       const noteKey = `${dayNum}-${(calendarEvents[dayNum] || []).length}`
@@ -954,19 +1512,39 @@ export default function CreatePage() {
       status: "published",
       }
       console.log("Adding to published posts:", newPublishedPost)
-      setPublishedPosts(prev => [...prev, newPublishedPost])
+      setPublishedPosts(prev => {
+        const updatedPublished = [...prev, newPublishedPost]
+        saveToLocalStorage('publishedPosts', updatedPublished)
+        return updatedPublished
+      })
       
       // Create GREEN calendar note for today (successfully posted)
       const today = new Date().getDate()
-      const currentTime = new Date().toLocaleTimeString('en-US', { 
+      const now = new Date()
+      const currentTime = now.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: true 
       })
       
+      // Convert currentTime to 24-hour format for storage
+      const timeParts = currentTime.split(' ')
+      const timeOnly = timeParts[0] // "11:34"
+      const ampm = timeParts[1] // "PM"
+      const [hourStr, minuteStr] = timeOnly.split(':')
+      let hour24 = parseInt(hourStr)
+      
+      if (ampm === 'PM' && hour24 !== 12) {
+        hour24 += 12
+      } else if (ampm === 'AM' && hour24 === 12) {
+        hour24 = 0
+      }
+      
+      const time24Hour = `${hour24.toString().padStart(2, '0')}:${minuteStr}`
+      
                 const redCalendarNote = {
                   platform: selectedPlatform,
-                  time: currentTime,
+                  time: time24Hour,
                   status: `posted ${currentTime}`,
                   noteType: 'green' as const
                 }
@@ -976,10 +1554,14 @@ export default function CreatePage() {
                 console.log("TikTok platform check:", selectedPlatform === 'TikTok')
       
       // Add to calendar events
-      setCalendarEvents(prev => ({
+      setCalendarEvents(prev => {
+        const updatedEvents = {
         ...prev,
         [today]: [...(prev[today] || []), redCalendarNote]
-      }))
+        }
+        saveToLocalStorage('calendarEvents', updatedEvents)
+        return updatedEvents
+      })
       
       // Save content to calendar note
       const noteKey = `${today}-${(calendarEvents[today] || []).length}`
@@ -1030,12 +1612,20 @@ export default function CreatePage() {
       
       if (existingDraftIndex !== -1) {
         // Update existing draft
-        setDraftPosts(prev => prev.map((draft, index) => 
+        setDraftPosts(prev => {
+          const updatedDrafts = prev.map((draft, index) => 
           index === existingDraftIndex ? newDraft : draft
-        ))
+          )
+          saveToLocalStorage('draftPosts', updatedDrafts)
+          return updatedDrafts
+        })
       } else {
         // Create new draft
-        setDraftPosts(prev => [...prev, newDraft])
+        setDraftPosts(prev => {
+          const updatedDrafts = [...prev, newDraft]
+          saveToLocalStorage('draftPosts', updatedDrafts)
+          return updatedDrafts
+        })
       }
     }
 
@@ -1069,41 +1659,66 @@ export default function CreatePage() {
     }
   }, [showAccountDropdown])
 
-  const failedPosts = [
-    {
-      id: 1,
-      content: "This post failed to publish due to API limits",
-      platform: "Twitter",
-      date: "2024-01-12",
-      error: "Rate limit exceeded",
-    },
-    { id: 2, content: "Image upload failed", platform: "Instagram", date: "2024-01-11", error: "File too large" },
-  ]
+  // Close platform dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      
+      // Check if click is outside draft platform dropdown
+      if (showDraftPlatformDropdown) {
+        const draftDropdown = document.querySelector('[data-draft-platform-dropdown]')
+        if (draftDropdown && !draftDropdown.contains(target)) {
+          setShowDraftPlatformDropdown(false)
+        }
+      }
+      
+      // Check if click is outside published platform dropdown
+      if (showPublishedPlatformDropdown) {
+        const publishedDropdown = document.querySelector('[data-published-platform-dropdown]')
+        if (publishedDropdown && !publishedDropdown.contains(target)) {
+          setShowPublishedPlatformDropdown(false)
+        }
+      }
+    }
+    
+    if (showDraftPlatformDropdown || showPublishedPlatformDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDraftPlatformDropdown, showPublishedPlatformDropdown])
+
 
   const renderMainContent = () => {
     switch (activeSection) {
       case "settings":
         return (
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-semibold mb-6">Kết nối mạng xã hội và đăng nhập</h2>
+          <div className="w-full max-w-none mx-0">
+            <h2 className="text-2xl font-bold mb-6">Kết nối mạng xã hội và đăng nhập</h2>
             <p className="text-white/70 mb-6">Connect to your social media and login.</p>
             <div className="grid sm:grid-cols-2 gap-4">
               {[ 
-                { name: 'Twitter (X)', icon: '/x.png', url: 'https://twitter.com/login' },
-                { name: 'LinkedIn', icon: '/link.svg', url: 'https://www.linkedin.com/login' },
-                { name: 'Facebook', icon: '/fb.svg', url: 'https://www.facebook.com/login' },
-                { name: 'TikTok', icon: '/tiktok.png', url: 'https://www.tiktok.com/login' },
-                { name: 'Instagram', icon: '/instagram.png', url: 'https://www.instagram.com/accounts/login/' },
-                { name: 'Threads', icon: '/threads.png', url: 'https://www.threads.net/login' },
-                { name: 'Bluesky', icon: '/bluesky.png', url: 'https://bsky.app' },
-                { name: 'YouTube', icon: '/ytube.png', url: 'https://accounts.google.com/signin/v2/identifier' },
+                { name: 'Twitter (X)', icon: '/x.png', url: 'https://twitter.com/login', connected: true },
+                { name: 'LinkedIn', icon: '/link.svg', url: 'https://www.linkedin.com/login', connected: false },
+                { name: 'Facebook', icon: '/fb.svg', url: 'https://www.facebook.com/login', connected: false },
+                { name: 'TikTok', icon: '/tiktok.png', url: 'https://www.tiktok.com/login', connected: false },
+                { name: 'Instagram', icon: '/instagram.png', url: 'https://www.instagram.com/accounts/login/', connected: false },
+                { name: 'Threads', icon: '/threads.png', url: 'https://www.threads.net/login', connected: false },
+                { name: 'Bluesky', icon: '/bluesky.png', url: 'https://bsky.app', connected: false },
+                { name: 'YouTube', icon: '/ytube.png', url: 'https://accounts.google.com/signin/v2/identifier', connected: false },
               ].map((s, idx) => (
                 <button
                   key={idx}
                   onClick={() => window.open(s.url, '_blank')}
-                  className="flex items-center justify-center px-3 py-3 rounded-md hover:bg-white/5 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 rounded-md hover:bg-white/5 transition-colors"
                 >
+                  <div className="flex items-center gap-3">
                   <img src={s.icon} alt={s.name} className={`w-[36px] h-[36px] ${['Twitter (X)','Threads','TikTok'].includes(s.name) ? 'filter brightness-0 invert' : ''} cursor-pointer hover:opacity-80 transition-opacity`} />
+                    <span className="text-[#F5F5F7] font-medium">{s.name}</span>
+                  </div>
+                  <div className={`w-3 h-3 rounded-full ${s.connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 </button>
               ))}
                   </div>
@@ -1204,7 +1819,7 @@ export default function CreatePage() {
           </div>
 
             {calendarView === 'monthly' ? (
-                <div className="rounded-lg border border-white/10 overflow-hidden mt-4">
+                <div className="rounded-lg border border-white/10 overflow-hidden mt-4 h-[calc(100vh-120px)] flex flex-col">
                 {/* Weekday headers - Vietnamese: T2..CN */}
                 <div className="grid grid-cols-7 bg-white/5">
                   {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day) => (
@@ -1214,7 +1829,7 @@ export default function CreatePage() {
               ))}
             </div>
                 {/* Day grid */}
-                <div className="grid grid-cols-7">
+                <div className="grid grid-cols-7 grid-rows-5 flex-1 overflow-y-auto">
                   {Array.from({ length: 35 }, (_, i) => {
                     const daysInMonth = getDaysInMonth(currentYear, currentMonth)
                     const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
@@ -1233,15 +1848,33 @@ export default function CreatePage() {
                     const isClicked = clickedDays.has(clickedKey)
                     // Get events for this day from state
                     const dayEvents = calendarEvents[dayNum] || []
-                    const cellEvents: Array<{ platform: string; label: string; color: string; text: string; icon: string }> = dayEvents.map(event => {
+                    const cellEvents: Array<{ platform: string; label: string; color: string; text: string; icon: string }> = dayEvents.map((event, eventIdx) => {
                       console.log("Rendering calendar note for platform:", event.platform)
                       console.log("TikTok check:", event.platform === 'TikTok')
                       console.log("Icon path:", event.platform === 'TikTok' ? '/tiktok.png' : 'not tiktok')
                       return {
                       platform: event.platform,
-                      label: event.noteType === 'green' ? `posted ${event.time}` :
-                             event.noteType === 'yellow' ? 'not scheduled' :
-                             event.noteType === 'red' ? `scheduled for ${event.time}` :
+                      label: event.noteType === 'green' ? (() => {
+                               const timeParts = event.time.split(':')
+                               const hour24 = parseInt(timeParts[0])
+                               const minute = timeParts[1]
+                               const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                               const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
+                               return `posted ${hour12}:${minute} ${ampm}`
+                             })() :
+                             event.noteType === 'yellow' ? (() => {
+                               const timeParts = event.time.split(':')
+                               const hour24 = parseInt(timeParts[0])
+                               const minute = timeParts[1]
+                               const ampm = hour24 >= 12 ? 'PM' : 'AM'
+                               const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
+                               return `scheduled ${hour12}:${minute} ${ampm}`
+                             })() :
+                             event.noteType === 'red' ? (() => {
+                               const noteKey = `${dayNum}-${eventIdx}`
+                               const hasContent = calendarNoteContent[noteKey] && calendarNoteContent[noteKey].trim() !== ''
+                               return hasContent ? 'add time' : 'no content'
+                             })() :
                              `${event.status} ${event.time}`,
                       color: event.noteType === 'green' ? 'bg-[#8AE177]/20 border-[#8AE177]/40' :
                              event.noteType === 'yellow' ? 'bg-[#FACD5B]/20 border-[#FACD5B]/40' :
@@ -1265,7 +1898,7 @@ export default function CreatePage() {
         return (
                       <div
                         key={i}
-                        className={`h-28 p-2 cursor-pointer ${
+                        className={`h-full p-2 cursor-pointer ${
                           isClicked ? "border-2 border-[#E33265]" : "border-t border-b border-white/10"
                         } ${
                           isSelected ? "outline outline-2 outline-[#E33265]/60" : ""
@@ -1291,7 +1924,7 @@ export default function CreatePage() {
                         <div className="mt-2 space-y-1 max-h-16 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
                           {cellEvents.map((ev, idx) => {
                             const event = calendarEvents[dayNum]?.[idx]
-                            const isDraggable = event && (event.noteType === 'yellow' || event.noteType === 'green')
+                            const isDraggable = event && (event.noteType === 'yellow' || event.noteType === 'red')
                             
         return (
                               <button
@@ -1300,14 +1933,14 @@ export default function CreatePage() {
                                 draggable={isDraggable}
                                 onDragStart={(e) => handleCalendarNoteDragStart(e, dayNum, idx)}
                                 onDragEnd={handleCalendarNoteDragEnd}
-                                className={`inline-flex items-center gap-2 text-[11px] px-2 py-1 rounded-md border ${ev.color} ${ev.text} hover:opacity-80 transition-opacity ${isDraggable ? 'cursor-move' : 'cursor-pointer'} ${isDraggable ? 'hover:scale-105' : ''}`}
+                                className={`inline-flex items-center gap-2 text-[11px] px-2 py-1 rounded-md border w-full h-6 whitespace-nowrap overflow-visible ${ev.color} ${ev.text} hover:opacity-80 transition-opacity ${isDraggable ? 'cursor-move' : 'cursor-pointer'} ${isDraggable ? 'hover:scale-105' : ''}`}
                               >
                                 <img 
                                   src={ev.icon} 
                                   alt={ev.platform} 
                                   className={`w-4 h-4 ${ev.platform === 'Twitter' || ev.platform === 'Threads' || ev.platform === 'TikTok' ? 'filter brightness-0 invert' : ''}`}
                                 />
-                                <span className="truncate">{ev.label}</span>
+                                <span>{ev.label}</span>
                               </button>
                             )
                           })}
@@ -1355,7 +1988,7 @@ export default function CreatePage() {
             {showNotePopup && selectedNote && (() => {
               const { dayNum, noteIndex } = selectedNote
               const note = calendarEvents[dayNum]?.[noteIndex]
-              const isRedNote = note?.noteType === 'red' // now means to-be-published
+              const isPublishedNote = note?.noteType === 'green' // green means published
               
         return (
                 <div 
@@ -1375,8 +2008,8 @@ export default function CreatePage() {
                   </button>
 
                   <div className="flex items-center gap-4 mt-[8px]">
-                    {isRedNote ? (
-                      /* To-be-published (red) - Only View Icon disabled */
+                    {isPublishedNote ? (
+                      /* Published (green) - Only View Icon */
                       <button
                         onClick={handleRedNoteView}
                         className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded"
@@ -1387,9 +2020,17 @@ export default function CreatePage() {
                         </svg>
                       </button>
                     ) : (
-                      /* Yellow/Green Notes - Time Selection, View, and Delete Icons */
+                      /* Yellow/Red Notes (scheduled/not scheduled) - Conditional Time Selection, View, and Delete Icons */
                       <>
-                        {/* Time Selection - No Labels */}
+                        {/* Time Selection - Only show if note has content and is scheduled (yellow) or if it's yellow (already scheduled) */}
+                        {(() => {
+                          const note = calendarEvents[selectedNote.dayNum]?.[selectedNote.noteIndex]
+                          const noteKey = `${selectedNote.dayNum}-${selectedNote.noteIndex}`
+                          const hasContent = calendarNoteContent[noteKey] && calendarNoteContent[noteKey].trim() !== ''
+                          const isScheduled = note?.noteType === 'yellow'
+                          const shouldShowTime = isScheduled || (note?.noteType === 'red' && hasContent)
+                          
+                          return shouldShowTime ? (
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
@@ -1417,6 +2058,8 @@ export default function CreatePage() {
                             <option value="PM">PM</option>
                           </select>
               </div>
+                          ) : null
+                        })()}
 
                         {/* View Icon */}
                         <button
@@ -1447,13 +2090,22 @@ export default function CreatePage() {
 
             {/* Delete Confirmation Popup */}
             {showDeleteConfirm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-[#190F2F] rounded-lg p-6 w-80 border border-white/10">
+              <div 
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                onClick={handleCancelDelete}
+              >
+                <div 
+                  className="bg-[#190F2F] rounded-lg p-6 w-80 border border-white/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="text-center">
                     <h3 className="text-lg font-semibold text-white mb-4">Confirm delete</h3>
                     <div className="flex gap-3 justify-center">
                       <button
-                        onClick={handleConfirmDelete}
+                        onClick={() => {
+                          console.log('Yes button clicked')
+                          handleConfirmDelete()
+                        }}
                         className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600 transition-colors"
                       >
                         Yes
@@ -1474,44 +2126,114 @@ export default function CreatePage() {
 
       case "drafts":
         return (
-          <div className="w-full max-w-none mx-0">
+            <div className="w-full max-w-none mx-0 overflow-hidden">
             <h2 className="text-2xl font-bold mb-6">Bản nháp</h2>
-            <div className="space-y-[1px]">
-              {draftPosts.map((post) => (
-                <div key={post.id} className="group rounded-xl hover:bg-[#E33265]/70 transition-colors">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    {/* Left: platform icon + content */}
-                    <div className="flex items-center gap-3">
-                      {post.platformIcon === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platformIcon === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px]" />}
-                      {post.platformIcon === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px]" />}
-                      {post.platformIcon === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px]" />}
-                      {post.platformIcon === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platformIcon === 'Bluesky' && <img src="/bluesky.png" alt="Bluesky" className="w-[27px] h-[27px]" />}
-                      {post.platformIcon === 'YouTube' && <img src="/ytube.png" alt="YouTube" className="w-[27px] h-[27px]" />}
-                      {post.platformIcon === 'TikTok' && <img src="/tiktok.png" alt="TikTok" className="w-[27px] h-[27px]" />}
-                      {/* Fallback to platform if platformIcon is not available */}
-                      {!post.platformIcon && post.platform === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {!post.platformIcon && post.platform === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px]" />}
-                      {!post.platformIcon && post.platform === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px]" />}
-                      {!post.platformIcon && post.platform === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px]" />}
-                      {!post.platformIcon && post.platform === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      <div className="text-white/90 truncate flex-1 mr-5">{post.content}</div>
-                    </div>
-                    {/* Right: date/time stub and action */}
-                    <div className="flex items-center text-white/80">
-                      <span className="text-sm whitespace-nowrap mr-[10px]">{post.date}</span>
+              
+              {/* Filter and Search Controls */}
+              <div className="flex gap-4 mb-6">
+                {/* Filter by Platform */}
+                <div className="relative">
                       <button
-                        onClick={() => handleEditDraft(post)}
-                        className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-blue-400 hover:bg-blue-400/20 rounded transition-colors mr-[10px] ml-[2px]"
-                      >
-                        <svg className="w-[20px] h-[20px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    onClick={() => setShowDraftPlatformDropdown(!showDraftPlatformDropdown)}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors"
+                  >
+                    <span>Filter by Platform</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
+                  
+                  {showDraftPlatformDropdown && (
+                    <div data-draft-platform-dropdown className="absolute top-full left-0 mt-1 w-48 bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg z-50">
+                      {platformOptions.map((option) => (
                       <button
-                        onClick={() => handleDraftDeleteClick(post.id)}
+                          key={option.value}
+                          onClick={() => {
+                            setDraftPlatformFilter(option.value)
+                            setShowDraftPlatformDropdown(false)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          {option.icon && (
+                            <img 
+                              src={option.icon} 
+                              alt={option.label} 
+                              className={`w-5 h-5 ${['twitter', 'threads', 'tiktok'].includes(option.value) ? 'filter brightness-0 invert' : ''}`} 
+                            />
+                          )}
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              
+              {/* Filter by Date */}
+              <div className="relative">
+                <select
+                  value={draftDateFilter}
+                  onChange={(e) => setDraftDateFilter(e.target.value)}
+                  className="appearance-none flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors cursor-pointer pr-8"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                </select>
+                <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="flex-1 relative">
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={draftSearchTerm}
+                    onChange={(e) => setDraftSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] placeholder-gray-400 focus:outline-none focus:border-[#E33265] transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-[1px]">
+              {filterAndSortPosts(draftPosts, draftSearchTerm, draftDateFilter, draftPlatformFilter).map((post) => (
+                <div 
+                  key={post.id} 
+                  className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
+                  onClick={() => handleEditDraft(post)}
+                >
+                  <div className="flex items-center px-4 py-3 w-full">
+                    {/* Left: platform icon + content */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {post.platformIcon === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platformIcon === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platformIcon === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platformIcon === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platformIcon === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platformIcon === 'Bluesky' && <img src="/bluesky.png" alt="Bluesky" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platformIcon === 'YouTube' && <img src="/ytube.png" alt="YouTube" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platformIcon === 'TikTok' && <img src="/tiktok.png" alt="TikTok" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {/* Fallback to platform if platformIcon is not available */}
+                      {!post.platformIcon && post.platform === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {!post.platformIcon && post.platform === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {!post.platformIcon && post.platform === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {!post.platformIcon && post.platform === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {!post.platformIcon && post.platform === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      <div className="text-white/90 truncate flex-1 min-w-0 max-w-[1050px]">{post.content}</div>
+                    </div>
+                    {/* Right: date and delete button */}
+                    <div className="flex items-center text-white/80 flex-shrink-0 gap-2 ml-4">
+                      <span className="text-sm whitespace-nowrap">{post.date}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDraftDeleteClick(post.id)
+                        }}
                         className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-red-500 hover:bg-red-500/20 rounded transition-colors"
                       >
                         <svg className="w-[20px] h-[20px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1528,29 +2250,104 @@ export default function CreatePage() {
 
       case "published":
         return (
-          <div className="w-full max-w-none mx-0">
+            <div className="w-full max-w-none mx-0 overflow-hidden">
             <h2 className="text-2xl font-bold mb-6">Published Posts</h2>
-            <div className="space-y-[1px]">
-              {publishedPosts.map((post) => (
-                <div key={post.id} className="group rounded-xl hover:bg-[#E33265]/70 transition-colors">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    {/* Left: platform icon + content */}
-                    <div className="flex items-center gap-3">
-                      {post.platform === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platform === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platform === 'TikTok' && <img src="/tiktok.png" alt="TikTok" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platform === 'Bluesky' && <img src="/bluesky.png" alt="Bluesky" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'YouTube' && <img src="/ytube.png" alt="YouTube" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'Pinterest' && <img src="/pinterest.svg" alt="Pinterest" className="w-[27px] h-[27px]" />}
-                      <div className="text-white/90">{post.content}</div>
+              
+              {/* Filter and Search Controls */}
+              <div className="flex gap-4 mb-6">
+                {/* Filter by Platform */}
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowPublishedPlatformDropdown(!showPublishedPlatformDropdown)}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors"
+                  >
+                    <span>Filter by Platform</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {showPublishedPlatformDropdown && (
+                    <div data-published-platform-dropdown className="absolute top-full left-0 mt-1 w-48 bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg z-50">
+                      {platformOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setPublishedPlatformFilter(option.value)
+                            setShowPublishedPlatformDropdown(false)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors first:rounded-t-lg last:rounded-b-lg"
+                        >
+                          {option.icon && (
+                            <img 
+                              src={option.icon} 
+                              alt={option.label} 
+                              className={`w-5 h-5 ${['twitter', 'threads', 'tiktok'].includes(option.value) ? 'filter brightness-0 invert' : ''}`} 
+                            />
+                          )}
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
                     </div>
-                    {/* Right: date/time stub and action */}
-                    <div className="flex items-center gap-3 text-white/80">
-                      <span className="text-sm">{post.date}</span>
-                      <Button size="lg" variant="outline" className="bg-transparent text-white/90 border-white/20 hover:bg-white/10 px-5 py-2.5">Xem</Button>
+                  )}
+                </div>
+              
+              {/* Filter by Date */}
+              <div className="relative">
+                <select
+                  value={publishedDateFilter}
+                  onChange={(e) => setPublishedDateFilter(e.target.value)}
+                  className="appearance-none flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors cursor-pointer pr-8"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                </select>
+                <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="flex-1 relative">
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={publishedSearchTerm}
+                    onChange={(e) => setPublishedSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] placeholder-gray-400 focus:outline-none focus:border-[#E33265] transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-[1px]">
+              {filterAndSortPosts(publishedPosts, publishedSearchTerm, publishedDateFilter, publishedPlatformFilter).map((post) => (
+                <div 
+                  key={post.id} 
+                  className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
+                  onClick={() => window.open(post.url, '_blank')}
+                >
+                  <div className="flex items-center px-4 py-3 w-full">
+                    {/* Left: platform icon + content */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {post.platform === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platform === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platform === 'TikTok' && <img src="/tiktok.png" alt="TikTok" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platform === 'Bluesky' && <img src="/bluesky.png" alt="Bluesky" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'YouTube' && <img src="/ytube.png" alt="YouTube" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'Pinterest' && <img src="/pinterest.svg" alt="Pinterest" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      <div className="text-white/90 truncate flex-1 min-w-0 max-w-[1050px]">{post.content}</div>
+                    </div>
+                    {/* Right: date only */}
+                    <div className="flex items-center text-white/80 flex-shrink-0 ml-4">
+                      <span className="text-sm whitespace-nowrap">{post.date}</span>
                   </div>
                   </div>
                 </div>
@@ -1582,35 +2379,63 @@ export default function CreatePage() {
               </div>
             )}
 
+            {/* Retry Confirmation Modal */}
+            {showRetryConfirm && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-6 w-80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-[#F5F5F7] mb-4">Thử lại?</h3>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        onClick={handleRetryCancel}
+                        className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition-colors"
+                      >
+                        Không
+                      </button>
+                      <button
+                        onClick={handleRetryConfirm}
+                        className="bg-[#E33265] text-white px-6 py-2 rounded hover:bg-[#E33265]/80 transition-colors"
+                      >
+                        Có
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )
 
       case "failed":
         return (
-          <div className="w-full max-w-none mx-0">
+          <div className="w-full max-w-none mx-0 overflow-hidden">
             <h2 className="text-2xl font-bold mb-6">Failed Posts</h2>
             <div className="space-y-[1px]">
               {failedPosts.map((post) => (
-                <div key={post.id} className="group rounded-xl hover:bg-[#E33265]/70 transition-colors">
-                  <div className="flex items-center justify-between px-4 py-3">
+                <div 
+                  key={post.id} 
+                  className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
+                  onClick={() => handleRetryClick(post.id)}
+                >
+                  <div className="flex items-center px-4 py-3 w-full">
                     {/* Left: platform icon + content */}
-                    <div className="flex items-center gap-3">
-                      {post.platform === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platform === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platform === 'TikTok' && <img src="/tiktok.png" alt="TikTok" className="w-[27px] h-[27px] filter brightness-0 invert" />}
-                      {post.platform === 'Bluesky' && <img src="/bluesky.png" alt="Bluesky" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'YouTube' && <img src="/ytube.png" alt="YouTube" className="w-[27px] h-[27px]" />}
-                      {post.platform === 'Pinterest' && <img src="/pinterest.svg" alt="Pinterest" className="w-[27px] h-[27px]" />}
-                      <div className="text-white/90">{post.content}</div>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {post.platform === 'Twitter' && <img src="/x.png" alt="X" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platform === 'Instagram' && <img src="/instagram.png" alt="Instagram" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'LinkedIn' && <img src="/link.svg" alt="LinkedIn" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'Facebook' && <img src="/fb.svg" alt="Facebook" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'Threads' && <img src="/threads.png" alt="Threads" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platform === 'TikTok' && <img src="/tiktok.png" alt="TikTok" className="w-[27px] h-[27px] filter brightness-0 invert flex-shrink-0" />}
+                      {post.platform === 'Bluesky' && <img src="/bluesky.png" alt="Bluesky" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'YouTube' && <img src="/ytube.png" alt="YouTube" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      {post.platform === 'Pinterest' && <img src="/pinterest.svg" alt="Pinterest" className="w-[27px] h-[27px] flex-shrink-0" />}
+                      <div className="text-white/90 truncate flex-1 min-w-0 max-w-[1050px]">{post.content}</div>
                     </div>
-                    {/* Right: date/time stub and action */}
-                    <div className="flex items-center gap-3 text-white/80">
-                      <span className="text-sm">{post.date}</span>
-                      <Button size="lg" variant="outline" className="bg-transparent text-white/90 border-white/20 hover:bg-white/10 px-5 py-2.5">Thử lại</Button>
-                  </div>
+                    {/* Right: date only */}
+                    <div className="flex items-center text-white/80 flex-shrink-0 ml-4">
+                      <span className="text-sm whitespace-nowrap">{post.date}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1897,7 +2722,7 @@ export default function CreatePage() {
                     }}
                     className="bg-[#E33265] hover:bg-[#c52b57] text-white"
                   >
-                    <PlusIcon className="w-4 h-4 mr-2" />
+                    <PlusIcon className="w-6 h-6 mr-2" />
                     Tạo bài viết
                   </Button>
                 </div>
@@ -1907,22 +2732,26 @@ export default function CreatePage() {
               <Textarea
                     placeholder={`Bạn muốn chia sẻ gì trên ${openPosts.find((p) => p.id === selectedPostId)?.type || "bài viết"}?`}
                     value={postContents[selectedPostId] || ""}
-                    onChange={(e) => setPostContents({ ...postContents, [selectedPostId]: e.target.value })}
+                    onChange={(e) => {
+                      const updatedPostContents = { ...postContents, [selectedPostId]: e.target.value }
+                      setPostContents(updatedPostContents)
+                      saveToLocalStorage('postContents', updatedPostContents)
+                    }}
                     className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] resize-none text-white placeholder:text-gray-400 focus:ring-0 focus:border-[#2A2A30] p-[10px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
                   />
-                  {/* Character count overlay inside textarea area */}
-                  <div className="pointer-events-none absolute right-0 bottom-0 translate-y-full mt-1 pt-[12px] text-xs text-gray-400">
-                    {(postContents[selectedPostId] || "").length}/
-                    {characterLimits[(openPosts.find((p) => p.id === selectedPostId)?.type as keyof typeof characterLimits) || "Facebook"]}
-                  {" "}ký tự
-                </div>
               </div>
 
               )}
               
               {/* Action buttons - only show when there's an active post */}
               {selectedPostId !== 0 && openPosts.length > 0 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+              <div className="relative flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+                {/* Character count positioned 30px above the white line */}
+                <div className="absolute -top-[30px] right-0 text-xs text-gray-400">
+                  {(postContents[selectedPostId] || "").length}/
+                  {characterLimits[(openPosts.find((p) => p.id === selectedPostId)?.type as keyof typeof characterLimits) || "Facebook"]}
+                  {" "}ký tự
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -2055,7 +2884,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("create"); window.history.pushState(null, "", "/create") }}
             >
-              <PlusIcon className="w-4 h-4 mr-2" />
+              <PlusIcon className="w-6 h-6 mr-2" />
               {isSidebarOpen && <span>Tạo bài viết</span>}
             </Button>
             <Button
@@ -2065,7 +2894,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("calendar"); window.history.pushState(null, "", "/lich") }}
             >
-              <CalendarIcon className="w-4 h-4 mr-2" />
+              <CalendarIcon className="w-6 h-6 mr-2" />
               {isSidebarOpen && <span>Lịch</span>}
             </Button>
             <Button
@@ -2075,7 +2904,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("drafts"); window.history.pushState(null, "", "/ban-nhap") }}
             >
-              <span className="w-4 h-4 mr-2">📝</span>
+              <span className="w-6 h-6 mr-2 text-xl">📝</span>
               {isSidebarOpen && <span>Bản nháp</span>}
             </Button>
             <Button
@@ -2085,7 +2914,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("published"); window.history.pushState(null, "", "/bai-da-dang") }}
             >
-              <SendIcon className="w-4 h-4 mr-2" />
+              <SendIcon className="w-6 h-6 mr-2" />
               {isSidebarOpen && <span>Bài đã đăng</span>}
             </Button>
             <Button
@@ -2095,7 +2924,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("failed"); window.history.pushState(null, "", "/bai-loi") }}
             >
-              <span className="w-4 h-4 mr-2 text-red-400">⚠</span>
+              <span className="w-6 h-6 mr-2 text-red-400 text-xl">⚠</span>
               {isSidebarOpen && <span>Bài lỗi</span>}
             </Button>
             <Button
@@ -2105,7 +2934,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("videos"); window.history.pushState(null, "", "/videos") }}
             >
-              <VideoIcon className="w-4 h-4 mr-2" />
+              <VideoIcon className="w-6 h-6 mr-2" />
               {isSidebarOpen && <span>Video</span>}
             </Button>
             <Button
@@ -2115,7 +2944,7 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("api"); window.history.pushState(null, "", "/api-dashboard") }}
             >
-              <span className="w-4 h-4 mr-2">⚡</span>
+              <span className="w-6 h-6 mr-2 text-xl">⚡</span>
               {isSidebarOpen && <span>Bảng điều khiển API</span>}
             </Button>
           </nav>
@@ -2127,91 +2956,93 @@ export default function CreatePage() {
               className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${activeSection === 'settings' ? 'bg-purple-500/10' : ''}`}
               onClick={() => { setActiveSection('settings'); window.history.pushState(null, '', '/settings') }}
             >
-              <SettingsIcon className="w-4 h-4 mr-2" />
+              <SettingsIcon className="w-6 h-6 mr-2" />
               {isSidebarOpen && <span>Cài đặt</span>}
             </Button>
           </div>
 
         </div>
 
-        {/* Sources Column moved out of sidebar */}
-        <div
+        {/* Sources Column moved out of sidebar - only show on create page */}
+        {activeSection === "create" && (
+          <div
           className="w-64 border-r border-white/10 p-4 pt-[30px]"
-        >
-          <div className="flex items-center justify-between mb-2">
+          >
+            <div className="flex items-center justify-between mb-2">
             <Button
-              size="sm"
+                size="sm"
               variant="ghost"
-              className="text-xs text-gray-200 hover:text-white px-2 py-1"
+                className="text-xs text-gray-200 hover:text-white px-2 py-1"
               onClick={() => setShowSourceModal(true)}
-            >
-              + Thêm nguồn
-            </Button>
-          </div>
+              >
+                + Thêm nguồn
+              </Button>
+            </div>
 
-          {isAddingSource && (
-            <div 
-              className={`border border-white/10 rounded-md p-3 bg-gray-900/50 transition-opacity duration-75 ${
-                isSourcePickerVisible ? 'opacity-100' : 'opacity-0'
-              }`}
+            {isAddingSource && (
+              <div 
+                className={`border border-white/10 rounded-md p-3 bg-gray-900/50 transition-opacity duration-75 ${
+                  isSourcePickerVisible ? 'opacity-100' : 'opacity-0'
+                }`}
               onMouseEnter={handleSourcePickerMouseEnter}
               onMouseLeave={startSourcePickerHideTimer}
-            >
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                {[
-                  { key: "text", label: "Text" },
-                  { key: "article", label: "Article Link" },
-                  { key: "youtube", label: "YouTube" },
-                  { key: "tiktok", label: "TikTok" },
-                  { key: "pdf", label: "PDF" },
-                  { key: "audio", label: "Audio" },
-                ].map((t) => (
-                  <Button
-                    key={t.key}
-                    size="sm"
-                    variant={selectedSourceType === (t.key as any) ? "secondary" : "ghost"}
-                    className={selectedSourceType === (t.key as any) ? "bg-white/10" : ""}
-                    onClick={() => setSelectedSourceType(t.key as any)}
-                  >
-                    {t.label}
-                  </Button>
-                ))}
-              </div>
+              >
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {[
+                    { key: "text", label: "Text" },
+                    { key: "article", label: "Article Link" },
+                    { key: "youtube", label: "YouTube" },
+                    { key: "tiktok", label: "TikTok" },
+                    { key: "pdf", label: "PDF" },
+                    { key: "audio", label: "Audio" },
+                  ].map((t) => (
+                    <Button
+                      key={t.key}
+                      size="sm"
+                      variant={selectedSourceType === (t.key as any) ? "secondary" : "ghost"}
+                      className={selectedSourceType === (t.key as any) ? "bg-white/10" : ""}
+                      onClick={() => setSelectedSourceType(t.key as any)}
+                    >
+                      {t.label}
+            </Button>
+                  ))}
+                </div>
 
-              <div className="space-y-2">
-                {selectedSourceType === "text" && (
-                  <Textarea placeholder="Paste or type your text source..." className="bg-gray-900/50 border-white/10" />
-                )}
-                {selectedSourceType !== "text" && (
-                  <Input
-                    placeholder={
-                      selectedSourceType === "article"
-                        ? "Paste article URL..."
-                        : selectedSourceType === "youtube"
-                        ? "Paste YouTube link..."
-                        : selectedSourceType === "tiktok"
-                        ? "Paste TikTok link..."
-                        : selectedSourceType === "pdf"
-                        ? "Paste PDF link..."
-                        : "Paste audio link..."
-                    }
-                    className="bg-gray-900/50 border-white/10"
-                  />
-                )}
+                <div className="space-y-2">
+                  {selectedSourceType === "text" && (
+                    <Textarea placeholder="Paste or type your text source..." className="bg-gray-900/50 border-white/10" />
+                  )}
+                  {selectedSourceType !== "text" && (
+                    <Input
+                      placeholder={
+                        selectedSourceType === "article"
+                          ? "Paste article URL..."
+                          : selectedSourceType === "youtube"
+                          ? "Paste YouTube link..."
+                          : selectedSourceType === "tiktok"
+                          ? "Paste TikTok link..."
+                          : selectedSourceType === "pdf"
+                          ? "Paste PDF link..."
+                          : "Paste audio link..."
+                      }
+                      className="bg-gray-900/50 border-white/10"
+                    />
+                  )}
 
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" className="bg-[#E33265] hover:bg-[#c52b57]">Save</Button>
-                  <Button size="sm" variant="outline" className="bg-transparent" onClick={() => setIsAddingSource(false)}>
-                    Cancel
-                  </Button>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="bg-[#E33265] hover:bg-[#c52b57]">Save</Button>
+                    <Button size="sm" variant="outline" className="bg-transparent" onClick={() => setIsAddingSource(false)}>
+                      Cancel
+            </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex ml-4">
           {/* Content Creation - add 30px top padding */}
           <div className={`flex-1 p-6 pt-[30px] h-full overflow-hidden`}>{renderMainContent()}</div>
 
@@ -2246,27 +3077,44 @@ export default function CreatePage() {
                     </div>
               </div>
 
-              <div className="h-[calc(100%-130px)] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+              <div ref={chatScrollRef} className="h-[calc(100%-130px)] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
                 <div className="space-y-4 min-h-0">
                   {chatMessages.map((message, index) => (
                     <div key={index} className={`text-sm ${message.role === "user" ? "text-right" : "text-left"}`}>
                       <div className={`rounded-lg p-3 max-w-[80%] break-words ${
                         message.role === "user" 
-                          ? "bg-[#E33265] text-white ml-auto inline-block" 
-                          : "bg-gray-800/50 text-white inline-block"
+                          ? "bg-[#E33265] text-white ml-auto inline-block text-left" 
+                          : "bg-[#2A2A30] text-[#F5F5F7] inline-block border border-[#3A3A42]"
                       }`}>
                         {message.content}
                       </div>
                     </div>
                   ))}
+                  
+                  {/* Typing indicator */}
+                  {isTyping && (
+                    <div className="text-sm text-left">
+                      <div className="bg-[#2A2A30] text-[#F5F5F7] inline-block rounded-lg p-3 border border-[#3A3A42]">
+                        <div className="flex items-center space-x-1">
+                          <span>AI is typing</span>
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-[#F5F5F7] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-[#F5F5F7] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 bg-[#F5F5F7] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Chat input area */}
               <div className="border-t border-white/10 relative pt-[5px] pl-[9px] pr-[5px] h-[120px]">
+                <div className="relative h-full">
                 <textarea
                   placeholder="Tôi là trợ lý viết mới của bạn. Bạn muốn viết về điều gì?"
-                  className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] rounded-md outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A30] resize-none text-white placeholder-gray-400 text-sm p-[10px]"
+                    className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] rounded-md outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A30] resize-none text-[#F5F5F7] placeholder-gray-400 text-sm p-[10px] pr-12"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2276,6 +3124,14 @@ export default function CreatePage() {
                     }
                   }}
                 />
+                  <button
+                    onClick={submitChat}
+                    disabled={!chatInput.trim() || isTyping}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-[#E33265] hover:bg-[#E33265]/80 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                  >
+                    <SendIcon className="w-4 h-4 text-white" />
+                  </button>
+                </div>
               </div>
             </Card>
           </div>
