@@ -46,6 +46,8 @@ export default function CreatePage() {
   const clonePickerRef = useRef<HTMLDivElement | null>(null)
   // Sidebar collapse/expand state controlled by hover
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  // Language state - Vietnamese or English
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi')
   // Source modal (full-screen overlay) state
   const [showSourceModal, setShowSourceModal] = useState(false)
   // Initialize active section from URL (?section=...)
@@ -77,11 +79,13 @@ export default function CreatePage() {
 
   // Load data from localStorage on component mount
   useEffect(() => {
-    // Load open posts
-    const savedOpenPosts = loadFromLocalStorage('openPosts', [])
-    if (savedOpenPosts.length > 0) {
-      setOpenPosts(savedOpenPosts)
-    }
+    // Clear any previously saved/open tabs and their contents
+    try {
+      localStorage.removeItem('openPosts')
+      localStorage.removeItem('postContents')
+    } catch {}
+    setOpenPosts([])
+    setSelectedPostId(0)
 
     // Load post contents
     const savedPostContents = loadFromLocalStorage('postContents', {})
@@ -98,7 +102,7 @@ export default function CreatePage() {
     // Remove the green YouTube note on day 26 if it exists
     if (savedCalendarEvents[26]) {
       const updatedEvents = { ...savedCalendarEvents }
-      updatedEvents[26] = updatedEvents[26].filter(note => 
+      updatedEvents[26] = updatedEvents[26].filter((note: {platform: string, time: string, status: string, noteType: 'red' | 'yellow' | 'green'}) => 
         !(note.platform === 'YouTube' && note.noteType === 'green')
       )
       if (updatedEvents[26].length === 0) {
@@ -121,13 +125,29 @@ export default function CreatePage() {
     // Load published posts
     const savedPublishedPosts = loadFromLocalStorage('publishedPosts', [])
     if (savedPublishedPosts.length > 0) {
+      // Check if the saved posts have time field, if not, use hardcoded data
+      const hasTimeField = savedPublishedPosts.length > 0 && savedPublishedPosts[0].hasOwnProperty('time')
+      if (hasTimeField) {
       setPublishedPosts(savedPublishedPosts)
+      } else {
+        // Clear localStorage and use hardcoded data with time fields
+        localStorage.removeItem('publishedPosts')
+        console.log('Cleared publishedPosts localStorage - using hardcoded data with time fields')
+      }
     }
 
     // Load failed posts
     const savedFailedPosts = loadFromLocalStorage('failedPosts', [])
     if (savedFailedPosts.length > 0) {
+      // Check if the saved posts have time field, if not, use hardcoded data
+      const hasTimeField = savedFailedPosts.length > 0 && savedFailedPosts[0].hasOwnProperty('time')
+      if (hasTimeField) {
       setFailedPosts(savedFailedPosts)
+      } else {
+        // Clear localStorage and use hardcoded data with time fields
+        localStorage.removeItem('failedPosts')
+        console.log('Cleared failedPosts localStorage - using hardcoded data with time fields')
+      }
     }
   }, [])
   // Publish modal state
@@ -226,6 +246,7 @@ export default function CreatePage() {
     }
   }, [showPublishModal])
 
+
   // Ensure the calendar popup is fully visible by computing a fixed screen position
   const [calendarPos, setCalendarPos] = useState<{ top: number; left: number } | null>(null)
   useEffect(() => {
@@ -321,6 +342,11 @@ export default function CreatePage() {
     return Math.min(maxWidth, 200) // Cap at 200px to prevent excessive width
   }
 
+  // Function to close video player
+  function closeVideoPlayer() {
+    setShowVideoPlayer(false)
+  }
+
   // Derive current account info when needed
   const selectedAccountInfo = (() => {
     const accounts = getAccountsForPlatform(selectedPlatform)
@@ -329,8 +355,8 @@ export default function CreatePage() {
   // Calendar view state: 'monthly' | 'weekly'
   const [calendarView, setCalendarView] = useState<'monthly' | 'weekly'>("monthly")
   // Vietnamese month navigation state for the calendar toolbar
-  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth()) // 0-11
-  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear())
+  const [currentMonth, setCurrentMonth] = useState<number>(8) // September 2025 (0-11, so 8 = September)
+  const [currentYear, setCurrentYear] = useState<number>(2025)
   const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate())
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
@@ -338,7 +364,111 @@ export default function CreatePage() {
   const [clickedDays, setClickedDays] = useState<Set<string>>(new Set())
   // Drag and drop state for social media icons
   const [draggedIcon, setDraggedIcon] = useState<string | null>(null)
-  const [calendarEvents, setCalendarEvents] = useState<{[key: string]: Array<{platform: string, time: string, status: string, noteType: 'red' | 'yellow' | 'green'}>}>({})
+  const [calendarEvents, setCalendarEvents] = useState<{[key: string]: Array<{platform: string, time: string, status: string, noteType: 'red' | 'yellow' | 'green'}>}>({
+    // September 2025 calendar events for published posts (ids 1-15)
+    "2025-8-15": [
+      { platform: "Facebook", time: "14:30", status: "posted 2:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-14": [
+      { platform: "Instagram", time: "09:15", status: "posted 9:15 AM", noteType: "green" as const }
+    ],
+    "2025-8-13": [
+      { platform: "LinkedIn", time: "16:45", status: "posted 4:45 PM", noteType: "green" as const }
+    ],
+    "2025-8-12": [
+      { platform: "Twitter", time: "11:20", status: "posted 11:20 AM", noteType: "green" as const }
+    ],
+    "2025-8-11": [
+      { platform: "Threads", time: "19:30", status: "posted 7:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-10": [
+      { platform: "TikTok", time: "08:00", status: "posted 8:00 AM", noteType: "green" as const }
+    ],
+    "2025-8-9": [
+      { platform: "Bluesky", time: "18:15", status: "posted 6:15 PM", noteType: "green" as const }
+    ],
+    "2025-8-8": [
+      { platform: "YouTube", time: "20:00", status: "posted 8:00 PM", noteType: "green" as const }
+    ],
+    "2025-8-7": [
+      { platform: "Pinterest", time: "13:30", status: "posted 1:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-6": [
+      { platform: "Twitter", time: "02:15", status: "posted 2:15 AM", noteType: "green" as const }
+    ],
+    "2025-8-5": [
+      { platform: "Instagram", time: "17:45", status: "posted 5:45 PM", noteType: "green" as const }
+    ],
+    "2025-8-4": [
+      { platform: "Facebook", time: "21:00", status: "posted 9:00 PM", noteType: "green" as const }
+    ],
+    "2025-8-3": [
+      { platform: "LinkedIn", time: "10:30", status: "posted 10:30 AM", noteType: "green" as const }
+    ],
+    "2025-8-2": [
+      { platform: "YouTube", time: "15:20", status: "posted 3:20 PM", noteType: "green" as const }
+    ],
+    "2025-8-1": [
+      { platform: "LinkedIn", time: "12:00", status: "posted 12:00 PM", noteType: "green" as const }
+    ],
+    // Additional August 2025 calendar events for published posts (ids 16-30)
+    "2025-8-30": [
+      { platform: "Instagram", time: "18:45", status: "posted 6:45 PM", noteType: "green" as const }
+    ],
+    "2025-8-29": [
+      { platform: "Twitter", time: "14:30", status: "posted 2:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-28": [
+      { platform: "Facebook", time: "08:15", status: "posted 8:15 AM", noteType: "green" as const }
+    ],
+    "2025-8-27": [
+      { platform: "LinkedIn", time: "10:45", status: "posted 10:45 AM", noteType: "green" as const }
+    ],
+    "2025-8-26": [
+      { platform: "TikTok", time: "16:20", status: "posted 4:20 PM", noteType: "green" as const }
+    ],
+    "2025-8-25": [
+      { platform: "Pinterest", time: "15:00", status: "posted 3:00 PM", noteType: "green" as const }
+    ],
+    "2025-8-24": [
+      { platform: "Threads", time: "19:30", status: "posted 7:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-23": [
+      { platform: "Bluesky", time: "07:00", status: "posted 7:00 AM", noteType: "green" as const }
+    ],
+    "2025-8-22": [
+      { platform: "YouTube", time: "18:00", status: "posted 6:00 PM", noteType: "green" as const }
+    ],
+    "2025-8-21": [
+      { platform: "Instagram", time: "14:15", status: "posted 2:15 PM", noteType: "green" as const }
+    ],
+    "2025-8-20": [
+      { platform: "Twitter", time: "23:30", status: "posted 11:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-19": [
+      { platform: "Facebook", time: "17:45", status: "posted 5:45 PM", noteType: "green" as const }
+    ],
+    "2025-8-18": [
+      { platform: "LinkedIn", time: "09:20", status: "posted 9:20 AM", noteType: "green" as const }
+    ],
+    "2025-8-17": [
+      { platform: "TikTok", time: "18:30", status: "posted 6:30 PM", noteType: "green" as const }
+    ],
+    "2025-8-16": [
+      { platform: "Pinterest", time: "10:00", status: "posted 10:00 AM", noteType: "green" as const }
+    ],
+    // Additional August 2025 calendar events for published posts (ids 31-35)
+    "2025-8-31": [
+      { platform: "Threads", time: "21:15", status: "posted 9:15 PM", noteType: "green" as const }
+    ]
+  })
+  
+  // Debug: Log calendar events when they change
+  useEffect(() => {
+    console.log('Calendar events loaded:', Object.keys(calendarEvents).length, 'events')
+    console.log('Sample keys:', Object.keys(calendarEvents).slice(0, 5))
+  }, [calendarEvents])
+  
   // Calendar note popup state
   const [selectedNote, setSelectedNote] = useState<{dayNum: number, noteIndex: number, year: number, month: number} | null>(null)
   const [showNotePopup, setShowNotePopup] = useState(false)
@@ -353,13 +483,312 @@ export default function CreatePage() {
   const [draftToDelete, setDraftToDelete] = useState<number | null>(null)
   // Publish confirmation state
   const [showPublishConfirm, setShowPublishConfirm] = useState(false)
-  const [publishedPosts, setPublishedPosts] = useState<Array<{ id: number; content: string; platform: string; date: string; status: string }>>([])
-  const [failedPosts, setFailedPosts] = useState<Array<{ id: number; content: string; platform: string; date: string; error: string }>>([
+  const [publishedPosts, setPublishedPosts] = useState<Array<{ id: number; content: string; platform: string; date: string; time: string; status: string; url?: string }>>([
+    {
+      id: 3,
+      content: "Working from home today and honestly, the productivity is unmatched. No commute, comfy clothes, and my cat as my co-worker. What's your WFH setup like? 🏠💻",
+      platform: "LinkedIn",
+      date: "2025-06-13",
+      time: "4:45 PM",
+      status: "published",
+      url: "https://linkedin.com/posts/xyz789"
+    },
+    {
+      id: 4,
+      content: "Just discovered this incredible new coffee shop downtown. The barista made a latte art of a cat! 🐱☕️ Sometimes it's the little things that make your day. #CoffeeLife #LocalBusiness",
+      platform: "Twitter",
+      date: "2025-06-12",
+      time: "11:20 AM",
+      status: "published",
+      url: "https://twitter.com/post/456"
+    },
+    {
+      id: 5,
+      content: "Weekend vibes: cooking a new recipe, catching up on Netflix, and planning next week's goals. How do you like to unwind? 🍳📺✨",
+      platform: "Threads",
+      date: "2025-06-11",
+      time: "7:30 PM",
+      status: "published",
+      url: "https://threads.net/post/def456"
+    },
+    {
+      id: 6,
+      content: "Morning walk in the park was exactly what I needed. Fresh air, birds chirping, and time to think. Nature has a way of resetting your mind. 🌳🚶‍♀️",
+      platform: "TikTok",
+      date: "2025-06-10",
+      time: "8:00 AM",
+      status: "published",
+      url: "https://tiktok.com/@user/video/123456"
+    },
+    {
+      id: 7,
+      content: "Just finished a 5K run and feeling amazing! The endorphins are real. Who else loves that post-workout high? 🏃‍♀️💪 #FitnessMotivation",
+      platform: "Bluesky",
+      date: "2025-06-09",
+      time: "6:15 PM",
+      status: "published",
+      url: "https://bsky.app/profile/user.bsky.social/post/abc123"
+    },
+    {
+      id: 8,
+      content: "Tried a new recipe today - homemade pasta from scratch! It was messy but so worth it. Cooking is such a therapeutic activity. 🍝👨‍🍳",
+      platform: "YouTube",
+      date: "2025-06-08",
+      time: "8:00 PM",
+      status: "published",
+      url: "https://youtube.com/watch?v=abc123"
+    },
+    {
+      id: 9,
+      content: "Found the perfect spot for my home office. Natural light, plants everywhere, and a view of the garden. Productivity level: maximum! 🌱💻",
+      platform: "Pinterest",
+      date: "2025-06-07",
+      time: "1:30 PM",
+      status: "published",
+      url: "https://pinterest.com/pin/123456789"
+    },
+    {
+      id: 10,
+      content: "Late night coding session with some good music and even better coffee. The best ideas come at 2 AM, right? 💻🎵☕️ #DeveloperLife",
+      platform: "Twitter",
+      date: "2025-06-06",
+      time: "2:15 AM",
+      status: "published",
+      url: "https://twitter.com/post/789"
+    },
+    {
+      id: 11,
+      content: "Beautiful sunset today! 🌅",
+      platform: "Instagram",
+      date: "2025-06-05",
+      time: "5:45 PM",
+      status: "published",
+      url: "https://instagram.com/p/def456"
+    },
+    {
+      id: 12,
+      content: "Just had the most amazing dinner at this new restaurant downtown. The chef is incredible and the atmosphere is perfect for a date night. Highly recommend checking it out if you're in the area! 🍽️✨",
+      platform: "Facebook",
+      date: "2025-06-04",
+      time: "9:00 PM",
+      status: "published",
+      url: "https://facebook.com/post/2"
+    },
+    {
+      id: 13,
+      content: "New year, new goals! 🎯",
+      platform: "LinkedIn",
+      date: "2025-06-03",
+      time: "10:30 AM",
+      status: "published",
+      url: "https://linkedin.com/posts/ghi789"
+    },
+    {
+      id: 14,
+      content: "Quick update: Everything is going great! 👍",
+      platform: "YouTube",
+      date: "2025-06-02",
+      time: "3:20 PM",
+      status: "published",
+      url: "https://youtube.com/shorts/def456"
+    },
+    {
+      id: 15,
+      content: "This is a very long post for LinkedIn that will exceed the character limit. LinkedIn has a 3000 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 3000 character limit for LinkedIn. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit. This is definitely going to be over 3000 characters now. I need to keep typing to reach that limit. This is getting quite extensive now. Let me continue adding more content to ensure we definitely exceed the LinkedIn character limit. This should be more than enough text to trigger the character limit error. I'm going to keep adding more and more text until we're absolutely sure we've exceeded the 3000 character limit for LinkedIn posts. This is getting quite long now, and I'm still adding more text to make sure we definitely exceed the limit. I hope this works!",
+      platform: "LinkedIn",
+      date: "2025-06-01",
+      time: "12:00 PM",
+      status: "published",
+      url: "https://linkedin.com/posts/very-long-post"
+    },
+    {
+      id: 16,
+      content: "Just discovered the most amazing sunset spot in the city! The colors were absolutely breathtaking tonight. Sometimes you need to slow down and appreciate the simple beauty around us. 🌅✨ #SunsetVibes #CityLife",
+      platform: "Instagram",
+      date: "2025-07-15",
+      time: "6:45 PM",
+      status: "published",
+      url: "https://instagram.com/p/sunset123"
+    },
+    {
+      id: 17,
+      content: "Productivity hack: I've been using the Pomodoro Technique for a week now and my focus has improved dramatically! 25 minutes of work, 5 minutes break. Who else swears by this method? 🍅⏰ #ProductivityTips",
+      platform: "Twitter",
+      date: "2025-07-14",
+      time: "2:30 PM",
+      status: "published",
+      url: "https://twitter.com/post/pomodoro456"
+    },
+    {
+      id: 18,
+      content: "Just finished my first 10K run and I'm feeling incredible! The sense of accomplishment is unmatched. Started with just 1K three months ago. Progress is possible with consistency! 🏃‍♀️💪 #FitnessJourney #Running",
+      platform: "Facebook",
+      date: "2025-07-13",
+      time: "8:15 AM",
+      status: "published",
+      url: "https://facebook.com/post/10k-run"
+    },
+    {
+      id: 19,
+      content: "Coffee shop productivity is unmatched today. There's something about the ambient noise and energy that just makes me more creative. What's your go-to work environment? ☕️💻 #RemoteWork #CoffeeShopVibes",
+      platform: "LinkedIn",
+      date: "2025-07-12",
+      time: "10:45 AM",
+      status: "published",
+      url: "https://linkedin.com/posts/coffee-shop-work"
+    },
+    {
+      id: 20,
+      content: "Tried a new recipe today - homemade sourdough bread! The process was therapeutic and the result was delicious. There's something magical about baking from scratch. 🍞✨ #Baking #Sourdough",
+      platform: "TikTok",
+      date: "2025-07-11",
+      time: "4:20 PM",
+      status: "published",
+      url: "https://tiktok.com/@user/video/sourdough789"
+    },
+    {
+      id: 21,
+      content: "Weekend project complete! Finally organized my home office and it feels like a brand new space. A clean workspace = a clear mind. 🗂️✨ #Organization #HomeOffice",
+      platform: "Pinterest",
+      date: "2025-07-10",
+      time: "3:00 PM",
+      status: "published",
+      url: "https://pinterest.com/pin/organized-office"
+    },
+    {
+      id: 22,
+      content: "Just had the most inspiring conversation with a mentor today. Sometimes a 30-minute chat can completely shift your perspective. Grateful for the wisdom shared! 🙏💡 #Mentorship #Growth",
+      platform: "Threads",
+      date: "2025-07-09",
+      time: "7:30 PM",
+      status: "published",
+      url: "https://threads.net/post/mentor-chat"
+    },
+    {
+      id: 23,
+      content: "Morning meditation session was exactly what I needed. Started with just 5 minutes and now I'm up to 20 minutes daily. The mental clarity is incredible. 🧘‍♀️✨ #Meditation #Mindfulness",
+      platform: "Bluesky",
+      date: "2025-07-08",
+      time: "7:00 AM",
+      status: "published",
+      url: "https://bsky.app/profile/user.bsky.social/post/meditation123"
+    },
+    {
+      id: 24,
+      content: "Just uploaded a new video about sustainable living tips! Small changes can make a big difference for our planet. What's one eco-friendly habit you've adopted? 🌱♻️ #Sustainability #EcoFriendly",
+      platform: "YouTube",
+      date: "2025-07-07",
+      time: "6:00 PM",
+      status: "published",
+      url: "https://youtube.com/watch?v=sustainable-living"
+    },
+    {
+      id: 25,
+      content: "Tìm được góc đọc sách lý tưởng trong căn hộ! Ánh sáng tự nhiên, ghế êm và một tách trà. Đây là nơi khiến mình hạnh phúc. 📚☕️ #ĐọcSách #ẤmCúng",
+      platform: "Instagram",
+      date: "2025-08-15",
+      time: "2:15 PM",
+      status: "published",
+      url: "https://instagram.com/p/reading-nook"
+    },
+    {
+      id: 26,
+      content: "Vừa hoàn thành một dự án lập trình khó mà mình làm suốt nhiều tuần! Cảm giác giải được vấn đề phức tạp thật sự rất đã. 💻🎉 #LậpTrình #GiảiQuyếtVấnĐề",
+      platform: "Twitter",
+      date: "2025-08-14",
+      time: "11:30 PM",
+      status: "published",
+      url: "https://twitter.com/post/coding-success"
+    },
+    {
+      id: 27,
+      content: "Chuyến leo núi cuối tuần thật tuyệt vời! Không khí trong lành và khung cảnh núi non đúng là điều mình cần để nạp lại năng lượng. Thiên nhiên là liệu pháp tốt nhất. 🏔️🥾 #LeoNui #ThiênNhiên",
+      platform: "Facebook",
+      date: "2025-08-13",
+      time: "5:45 PM",
+      status: "published",
+      url: "https://facebook.com/post/weekend-hike"
+    },
+    {
+      id: 28,
+      content: "Just finished reading 'Atomic Habits' and it completely changed my perspective on building good habits. Highly recommend! What's the best book you've read recently? 📖✨ #BookRecommendation #SelfImprovement",
+      platform: "LinkedIn",
+      date: "2025-08-12",
+      time: "9:20 AM",
+      status: "published",
+      url: "https://linkedin.com/posts/atomic-habits-review"
+    },
+    {
+      id: 29,
+      content: "Tried a new workout routine today and I'm already feeling the burn! Consistency is key when it comes to fitness. What's your favorite way to stay active? 💪🔥 #Fitness #WorkoutMotivation",
+      platform: "TikTok",
+      date: "2025-08-11",
+      time: "6:30 PM",
+      status: "published",
+      url: "https://tiktok.com/@user/video/new-workout"
+    },
+    {
+      id: 30,
+      content: "Just discovered this amazing local farmers market! The fresh produce and community atmosphere are incredible. Supporting local businesses feels so good. 🥬🌽 #LocalBusiness #FarmersMarket",
+      platform: "Pinterest",
+      date: "2025-08-10",
+      time: "10:00 AM",
+      status: "published",
+      url: "https://pinterest.com/pin/farmers-market"
+    },
+    {
+      id: 31,
+      content: "Bữa tối tuyệt vời với bạn bè tối nay! Đồ ăn ngon, bạn bè tuyệt, và rất nhiều tiếng cười. Những khoảnh khắc như thế này mới là ý nghĩa của cuộc sống. 🍽️😊 #BạnBè #KhoảnhKhắcĐẹp",
+      platform: "Threads",
+      date: "2025-09-15",
+      time: "9:15 PM",
+      status: "published",
+      url: "https://threads.net/post/friends-dinner"
+    },
+    {
+      id: 32,
+      content: "Hôm nay mình vừa học thêm một kỹ năng ngôn ngữ mới! Bắt đầu với Duolingo 6 tháng trước và giờ đã có thể trò chuyện cơ bản. Không bao giờ là quá muộn để học điều mới! 🌍📚 #HọcNgônNgữ #PhátTriểnBảnThân",
+      platform: "Bluesky",
+      date: "2025-09-14",
+      time: "4:45 PM",
+      status: "published",
+      url: "https://bsky.app/profile/user.bsky.social/post/language-learning"
+    },
+    {
+      id: 33,
+      content: "Dự án cuối tuần: Cuối cùng cũng sơn lại phòng ngủ! Màu mới khiến không gian trở nên tươi mới và tràn đầy năng lượng. Đôi khi thay đổi nhỏ tạo ra khác biệt lớn. 🎨✨ #CảiTạoNhà #TựLàm",
+      platform: "YouTube",
+      date: "2025-09-13",
+      time: "3:30 PM",
+      status: "published",
+      url: "https://youtube.com/shorts/bedroom-makeover"
+    },
+    {
+      id: 34,
+      content: "Vừa có một ngày spa thư giãn nhất! Chăm sóc bản thân không ích kỷ, đó là điều cần thiết. Dành thời gian nạp lại năng lượng rất quan trọng cho sức khỏe tinh thần. 🧖‍♀️💆‍♀️ #ChămSócBảnThân #SứcKhỏe",
+      platform: "Instagram",
+      date: "2025-09-12",
+      time: "7:00 PM",
+      status: "published",
+      url: "https://instagram.com/p/spa-day"
+    },
+    {
+      id: 35,
+      content: "Vừa hoàn thành một trò ghép hình khó mất ba ngày! Cảm giác đặt mảnh cuối cùng thật đã. Bạn thư giãn theo cách nào? 🧩✨ #GhépHình #ThưGiãn",
+      platform: "Twitter",
+      date: "2025-09-11",
+      time: "8:45 PM",
+      status: "published",
+      url: "https://twitter.com/post/puzzle-complete"
+    }
+  ])
+  const [failedPosts, setFailedPosts] = useState<Array<{ id: number; content: string; platform: string; date: string; time: string; error: string }>>([
     {
       id: 1,
       content: "Just finished reading an amazing book that completely changed my perspective on life. Sometimes the best adventures happen between the pages of a good book. What's everyone reading lately? 📚✨",
       platform: "Facebook",
       date: "2024-01-15",
+      time: "3:45 PM",
       error: "Network timeout"
     },
     {
@@ -367,132 +796,151 @@ export default function CreatePage() {
       content: "Coffee mugs are seriously underrated. There's something magical about finding the perfect mug that fits your hands just right. It's like a warm hug every morning ☕️💕",
       platform: "Instagram",
       date: "2024-01-14",
+      time: "10:30 AM",
       error: "Authentication failed"
     },
     {
       id: 3,
-      content: "This is an extremely long post that definitely exceeds the character limit for Twitter. I'm going to keep typing and typing to make sure this post is way too long for the platform. The character limit for Twitter is 280 characters, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 280 character limit for Twitter. This should be long enough now to trigger the character limit error. I hope this works!",
+      content: "Đây là một bài rất dài chắc chắn vượt quá giới hạn ký tự của Twitter. Mình sẽ tiếp tục gõ để bài này dài hơn nhiều so với mức cho phép. Giới hạn của Twitter là 280 ký tự, và bài này sẽ dài hơn nhiều. Cứ tiếp tục thêm nội dung để vượt giới hạn. Hy vọng là đủ để gây lỗi giới hạn ký tự!",
       platform: "Twitter",
       date: "2024-01-13",
+      time: "2:15 PM",
       error: "Character limit exceeded"
     },
     {
       id: 4,
-      content: "Working from home today and honestly, the productivity is unmatched. No commute, comfy clothes, and my cat as my co-worker. What's your WFH setup like? 🏠💻",
+      content: "Hôm nay làm việc tại nhà và thực sự hiệu suất cực cao. Không di chuyển, quần áo thoải mái và có chú mèo làm đồng nghiệp. Góc làm việc tại nhà của bạn như thế nào? 🏠💻",
       platform: "LinkedIn",
       date: "2024-01-12",
+      time: "5:20 PM",
       error: "Rate limit exceeded"
     },
     {
       id: 5,
-      content: "Just discovered this incredible new coffee shop downtown. The barista made a latte art of a cat! 🐱☕️ Sometimes it's the little things that make your day. #CoffeeLife #LocalBusiness",
+      content: "Vừa khám phá một quán cà phê tuyệt vời ở trung tâm. Barista vẽ latte hình mèo siêu dễ thương! 🐱☕️ Đôi khi những điều nhỏ bé lại làm ngày mới thật vui. #CuộcSốngCàPhê #HỗTrợĐịaPhương",
       platform: "Twitter",
       date: "2024-01-11",
+      time: "12:15 PM",
       error: "Content policy violation"
     },
     {
       id: 6,
-      content: "Weekend vibes: cooking a new recipe, catching up on Netflix, and planning next week's goals. How do you like to unwind? 🍳📺✨",
+      content: "Cuối tuần: nấu thử công thức mới, xem Netflix và lên kế hoạch mục tiêu tuần tới. Bạn thư giãn thế nào? 🍳📺✨",
       platform: "Threads",
       date: "2024-01-10",
+      time: "8:00 PM",
       error: "Server error 500"
     },
     {
       id: 7,
-      content: "Morning walk in the park was exactly what I needed. Fresh air, birds chirping, and time to think. Nature has a way of resetting your mind. 🌳🚶‍♀️",
+      content: "Đi dạo buổi sáng trong công viên đúng là điều mình cần. Không khí trong lành, chim hót và thời gian suy ngẫm. Thiên nhiên giúp tâm trí được đặt lại. 🌳🚶‍♀️",
       platform: "TikTok",
       date: "2024-01-09",
+      time: "8:30 AM",
       error: "Video processing failed"
     },
     {
       id: 8,
-      content: "Just finished a 5K run and feeling amazing! The endorphins are real. Who else loves that post-workout high? 🏃‍♀️💪 #FitnessMotivation",
+      content: "Vừa chạy xong 5K và cảm thấy tuyệt vời! Endorphin đúng là có thật. Ai cũng thích cảm giác phấn khích sau khi tập chứ? 🏃‍♀️💪 #ĐộngLựcTậpLuyện",
       platform: "Bluesky",
       date: "2024-01-08",
+      time: "7:00 PM",
       error: "Account suspended"
     },
     {
       id: 9,
-      content: "Tried a new recipe today - homemade pasta from scratch! It was messy but so worth it. Cooking is such a therapeutic activity. 🍝👨‍🍳",
+      content: "Thử công thức mới hôm nay - tự làm pasta từ đầu! Hơi bừa bộn nhưng rất đáng. Nấu ăn đúng là liệu pháp tuyệt vời. 🍝👨‍🍳",
       platform: "YouTube",
       date: "2024-01-07",
+      time: "8:45 PM",
       error: "Video upload failed"
     },
     {
       id: 10,
-      content: "Found the perfect spot for my home office. Natural light, plants everywhere, and a view of the garden. Productivity level: maximum! 🌱💻",
+      content: "Tìm được góc làm việc tại nhà hoàn hảo. Ánh sáng tự nhiên, cây xanh xung quanh và nhìn ra khu vườn. Năng suất: tối đa! 🌱💻",
       platform: "Pinterest",
       date: "2024-01-06",
+      time: "2:00 PM",
       error: "Image upload failed"
     },
     {
       id: 11,
-      content: "Late night coding session with some good music and even better coffee. The best ideas come at 2 AM, right? 💻🎵☕️ #DeveloperLife",
+      content: "Đêm muộn code với âm nhạc hay và cà phê còn tuyệt hơn. Những ý tưởng tốt nhất đến lúc 2 giờ sáng phải không? 💻🎵☕️ #CuộcSốngDev",
       platform: "Twitter",
       date: "2024-01-05",
+      time: "2:30 AM",
       error: "API key expired"
     },
     {
       id: 12,
-      content: "Another extremely long post that will definitely exceed the character limit for Threads platform. Threads has a 500 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 500 character limit for Threads. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit. This is definitely going to be over 500 characters now.",
+      content: "Một bài rất dài khác chắc chắn vượt giới hạn ký tự của Threads (500 ký tự). Mình sẽ thêm nội dung để vượt giới hạn và xem hệ thống xử lý thế nào. Hy vọng đủ dài để kích hoạt lỗi giới hạn ký tự!",
       platform: "Threads",
       date: "2024-01-04",
+      time: "8:00 PM",
       error: "Character limit exceeded"
     },
     {
       id: 13,
-      content: "Beautiful sunset today! 🌅",
+      content: "Hoàng hôn hôm nay thật đẹp! 🌅",
       platform: "Instagram",
       date: "2024-01-03",
+      time: "6:00 PM",
       error: "Connection timeout"
     },
     {
       id: 14,
-      content: "Just had the most amazing dinner at this new restaurant downtown. The chef is incredible and the atmosphere is perfect for a date night. Highly recommend checking it out if you're in the area! 🍽️✨",
+      content: "Vừa có bữa tối tuyệt vời ở một nhà hàng mới trung tâm. Đầu bếp thật xuất sắc và không gian rất hợp cho buổi hẹn hò. Rất đáng thử nếu bạn ở gần! 🍽️✨",
       platform: "Facebook",
       date: "2024-01-02",
+      time: "9:30 PM",
       error: "Authentication failed"
     },
     {
       id: 15,
-      content: "This is another very long post that will exceed the character limit for Bluesky. Bluesky has a 300 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 300 character limit for Bluesky. This should be long enough now to trigger the character limit error. I hope this works!",
+      content: "Một bài rất dài khác sẽ vượt giới hạn 300 ký tự của Bluesky. Mình tiếp tục thêm nội dung để chắc chắn vượt giới hạn và xem lỗi xuất hiện.",
       platform: "Bluesky",
       date: "2024-01-01",
+      time: "1:00 PM",
       error: "Character limit exceeded"
     },
     {
       id: 16,
-      content: "New year, new goals! 🎯",
+      content: "Năm mới, mục tiêu mới! 🎯",
       platform: "LinkedIn",
       date: "2023-12-31",
+      time: "11:00 AM",
       error: "Rate limit exceeded"
     },
     {
       id: 17,
-      content: "This post contains some potentially sensitive content that might violate platform policies. Let's see what happens when we try to post something that could be flagged by content moderation systems. This is just a test to see how the platform handles different types of content.",
+      content: "Bài viết này có thể chứa nội dung nhạy cảm và vi phạm chính sách nền tảng. Thử đăng để xem hệ thống kiểm duyệt xử lý ra sao. Chỉ là thử nghiệm.",
       platform: "TikTok",
       date: "2023-12-30",
+      time: "4:00 PM",
       error: "Content policy violation"
     },
     {
       id: 18,
-      content: "Another extremely long post for Pinterest that will definitely exceed the character limit. Pinterest has a 500 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 500 character limit for Pinterest. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit.",
+      content: "Một bài rất dài nữa cho Pinterest chắc chắn vượt giới hạn 500 ký tự. Mình sẽ tiếp tục thêm nội dung để vượt giới hạn và xem lỗi.",
       platform: "Pinterest",
       date: "2023-12-29",
+      time: "2:30 PM",
       error: "Character limit exceeded"
     },
     {
       id: 19,
-      content: "Quick update: Everything is going great! 👍",
+      content: "Cập nhật nhanh: Mọi thứ đang rất ổn! 👍",
       platform: "YouTube",
       date: "2023-12-28",
+      time: "4:00 PM",
       error: "Video processing failed"
     },
     {
       id: 20,
-      content: "This is a very long post for LinkedIn that will exceed the character limit. LinkedIn has a 3000 character limit, and this post is going to be much longer than that. I need to keep adding more text to ensure it exceeds the limit. This is getting quite long now, and I'm still not at the character limit yet. Let me keep going and going until I definitely exceed the 3000 character limit for LinkedIn. This should be long enough now to trigger the character limit error. I hope this works! Let me add even more text to make sure we exceed the limit. This is definitely going to be over 3000 characters now. I need to keep typing to reach that limit. This is getting quite extensive now. Let me continue adding more content to ensure we definitely exceed the LinkedIn character limit. This should be more than enough text to trigger the character limit error. I'm going to keep adding more and more text until we're absolutely sure we've exceeded the 3000 character limit for LinkedIn posts. This is getting quite long now, and I'm still adding more text to make sure we definitely exceed the limit. I hope this works!",
+      content: "Bài rất dài cho LinkedIn vượt giới hạn 3000 ký tự. Mình tiếp tục thêm nội dung để vượt giới hạn và quan sát hệ thống xử lý.",
       platform: "LinkedIn",
       date: "2023-12-27",
+      time: "12:00 PM",
       error: "Character limit exceeded"
     }
   ])
@@ -512,6 +960,8 @@ export default function CreatePage() {
   // Helper: get calendar events for a specific day
   function getCalendarEventsForDay(year: number, month: number, day: number) {
     const key = getCalendarKey(year, month, day)
+    console.log('Looking for calendar events for key:', key, 'Found:', calendarEvents[key])
+    console.log('Available keys:', Object.keys(calendarEvents).slice(0, 5), '...')
     return calendarEvents[key] || []
   }
 
@@ -536,10 +986,10 @@ export default function CreatePage() {
         sourceYear: year,
         sourceMonth: month
       }
-      e.dataTransfer.setData('application/json', JSON.stringify(eventData))
-      e.dataTransfer.effectAllowed = 'move'
+      (e as any).dataTransfer.setData('application/json', JSON.stringify(eventData))
+      ;(e as any).dataTransfer.effectAllowed = 'move'
       // Prevent click event during drag
-      e.currentTarget.style.pointerEvents = 'none'
+      (e.currentTarget as HTMLElement).style.pointerEvents = 'none'
     } else {
     console.log('Note is not draggable (published note)')
       e.preventDefault() // Prevent dragging red notes
@@ -548,7 +998,7 @@ export default function CreatePage() {
 
   const handleCalendarNoteDragEnd = (e: React.DragEvent) => {
     // Re-enable pointer events after drag
-    e.currentTarget.style.pointerEvents = 'auto'
+    (e.currentTarget as HTMLElement).style.pointerEvents = 'auto'
   }
 
   const handleCalendarDragOver = (e: React.DragEvent) => {
@@ -568,8 +1018,12 @@ export default function CreatePage() {
     const todayMonth = currentDate.getMonth()
     const todayYear = currentDate.getFullYear()
     
-    // Only allow drops on today or future dates (same month and year)
-    if (dayNum >= todayDay && month === todayMonth && year === todayYear) {
+    // Create the target date for comparison
+    const targetDate = new Date(year, month, dayNum)
+    const today = new Date(todayYear, todayMonth, todayDay)
+    
+    // Only allow drops on today or future dates
+    if (targetDate >= today) {
       // If dragging an existing calendar note (yellow/red)
       if (draggedEventData) {
         try {
@@ -617,9 +1071,10 @@ export default function CreatePage() {
           noteType: 'red' as 'red' | 'yellow' | 'green'
         }
         setCalendarEvents(prev => {
+          const key = getCalendarKey(year, month, dayNum)
           const updatedEvents = {
           ...prev,
-          [dayNum]: [...(prev[dayNum] || []), newEvent]
+          [key]: [...(prev[key] || []), newEvent]
           }
           saveToLocalStorage('calendarEvents', updatedEvents)
           return updatedEvents
@@ -878,11 +1333,11 @@ export default function CreatePage() {
             [newPostId]: postToMove.content
           }))
           
-          // Remove from failed posts
-          const updatedFailedPosts = failedPosts.filter(post => post.id !== postToRetry)
-          setFailedPosts(updatedFailedPosts)
-          saveToLocalStorage('failedPosts', updatedFailedPosts)
-          
+      // Remove from failed posts
+      const updatedFailedPosts = failedPosts.filter(post => post.id !== postToRetry)
+      setFailedPosts(updatedFailedPosts)
+      saveToLocalStorage('failedPosts', updatedFailedPosts)
+      
           // Switch to the create tab to show the new post with full formatting
           setActiveSection('create')
         } else {
@@ -901,9 +1356,10 @@ export default function CreatePage() {
               
               const newPublishedPost = {
                 id: Date.now(),
-                content: postToMove.content,
-                platform: postToMove.platform,
-                date: new Date().toISOString().split('T')[0],
+          content: postToMove.content,
+          platform: postToMove.platform,
+          date: new Date().toISOString().split('T')[0],
+          time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
                 status: 'published',
                 url: `https://${postToMove.platform.toLowerCase()}.com/post/${Date.now()}`
               }
@@ -1207,6 +1663,18 @@ export default function CreatePage() {
     setShowVideoModal(true)
   }
 
+  function handleBackToUpload() {
+    setShowVideoProcessing(false)
+    setShowVideoModal(true)
+  }
+
+  function handleGenerateCaptions() {
+    // TODO: Implement caption generation logic
+    console.log('Generating captions for video:', selectedVideoFile?.name)
+    // For now, just show a success message
+    alert('Caption generation started! This is a demo.')
+  }
+
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (file) {
@@ -1233,6 +1701,9 @@ export default function CreatePage() {
       
       // Add to main content area
       setUploadedMedia(prev => [...prev, {type: 'video', file, preview: previewUrl}])
+      
+      // Show the white processing modal when video is selected
+      setShowVideoProcessing(true)
     }
   }
 
@@ -1274,6 +1745,9 @@ export default function CreatePage() {
       
       // Add to main content area
       setUploadedMedia(prev => [...prev, {type: 'video', file, preview: previewUrl}])
+      
+      // Show the white processing modal when video is dropped
+      setShowVideoProcessing(true)
     }
   }
 
@@ -1354,6 +1828,7 @@ export default function CreatePage() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
+  const [showVideoProcessing, setShowVideoProcessing] = useState(false)
   // Image upload modal state for Add Media
   const [showImageModal, setShowImageModal] = useState(false)
   const [isDragOverImage, setIsDragOverImage] = useState(false)
@@ -1362,10 +1837,23 @@ export default function CreatePage() {
   // Media in main content area
   const [uploadedMedia, setUploadedMedia] = useState<Array<{type: 'image' | 'video', file: File, preview: string}>>([])
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false)
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [chatInput, setChatInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const chatScrollRef = useRef<HTMLDivElement>(null)
+
+  // Handle Escape key to close video player
+  useEffect(() => {
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === 'Escape' && showVideoPlayer) {
+        closeVideoPlayer()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscapeKey)
+    return () => document.removeEventListener('keydown', handleEscapeKey)
+  }, [showVideoPlayer])
 
   // Function to detect if message is gibberish or meaningless
   function isGibberish(text: string): boolean {
@@ -1470,7 +1958,7 @@ export default function CreatePage() {
     // Check if it's gibberish
     if (isGibberish(userMessage)) {
       return {
-        response: "Hi! It looks like your message might have been typed by accident or is a placeholder. Could you please clarify or resend the message you'd like help with? I'd love to assist you with refining or brainstorming your social media post!",
+        response: "Xin chào! Có vẻ như tin nhắn của bạn có thể được gõ nhầm hoặc là nội dung mẫu. Bạn có thể làm rõ hoặc gửi lại tin nhắn mà bạn muốn được hỗ trợ không? Tôi rất muốn giúp bạn tinh chỉnh hoặc động não cho bài đăng mạng xã hội!",
         shouldCreatePost: false
       }
     }
@@ -1497,11 +1985,11 @@ export default function CreatePage() {
       const platform = detectedPlatform || 'Facebook' // Default to Facebook if no platform specified
       const postContent = generatePostContent(userMessage, platform)
       
-      let response = "Perfect! I'll create a new post for you"
+      let response = "Tuyệt vời! Tôi sẽ tạo một bài đăng mới cho bạn"
       if (detectedPlatform) {
-        response += ` on ${platform}`
+        response += ` trên ${platform}`
       }
-      response += ". I've generated some content based on what you shared - you can edit it however you'd like!"
+      response += ". Tôi đã tạo nội dung dựa trên những gì bạn chia sẻ - bạn có thể chỉnh sửa theo ý muốn!"
       
       return {
         response,
@@ -1518,7 +2006,7 @@ export default function CreatePage() {
         message.includes(keyword)
       )
       
-      let response = "Interesting take! "
+      let response = "Quan điểm thú vị! "
       
       if (topics.includes('coffee')) {
         response += "Not everyone loves the smell of coffee—in fact, while many people find it comforting or energizing, others can be turned off by its strong, roasted scent. If you're sharing this on social media, maybe lean into the unexpected opinion! Something like:\n\n\"Unpopular opinion: coffee smells terrible. I said what I said. ☕🚫\"\n\nThat kind of bold, casual statement often sparks fun debate and engagement. Want help crafting a post with a little humor or edge to it?"
@@ -1538,7 +2026,7 @@ export default function CreatePage() {
     } else {
       // Short or unclear messages
       return {
-        response: `I see you mentioned "${userMessage}" - that could be a great starting point for a social media post! Could you tell me more about what you're thinking? Are you looking to share an experience, ask a question, or start a conversation about it?`,
+        response: `Tôi thấy bạn đề cập đến "${userMessage}" - đó có thể là điểm khởi đầu tuyệt vời cho một bài đăng mạng xã hội! Bạn có thể cho tôi biết thêm về những gì bạn đang nghĩ không? Bạn muốn chia sẻ trải nghiệm, đặt câu hỏi, hay bắt đầu cuộc trò chuyện về nó?`,
         shouldCreatePost: false
       }
     }
@@ -1670,62 +2158,16 @@ export default function CreatePage() {
 
   // Draft posts state so new drafts appear in the Drafts section
   const [draftPosts, setDraftPosts] = useState<Array<{ id: number; content: string; platform: string; platformIcon?: string; date: string; status: string }>>([
-    {
-      id: 1,
-      content: "Just finished reading an amazing book that completely changed my perspective on life. Sometimes the best adventures happen between the pages of a good book. What's everyone reading lately? 📚✨",
-      platform: "Facebook",
-      platformIcon: "Facebook",
-      date: "2024-01-15",
-      status: "draft"
-    },
-    {
-      id: 2,
-      content: "Coffee mugs are seriously underrated. There's something magical about finding the perfect mug that fits your hands just right. It's like a warm hug every morning ☕️💕",
-      platform: "Instagram",
-      platformIcon: "Instagram",
-      date: "2024-01-14",
-      status: "draft"
-    },
-    {
-      id: 3,
-      content: "Waking up early is hard, but there's something peaceful about watching the sunrise. The world feels quieter, more hopeful. Early birds, what's your secret? 🌅",
-      platform: "Twitter",
-      platformIcon: "Twitter",
-      date: "2024-01-13",
-      status: "draft"
-    },
-    {
-      id: 4,
-      content: "If I could fly on a broom, I'd definitely choose a sunset flight over the city. The view from up there must be incredible! ✨🧹 #MagicalThinking",
-      platform: "TikTok",
-      platformIcon: "TikTok",
-      date: "2024-01-12",
-      status: "draft"
-    },
-    {
-      id: 5,
-      content: "Dancing at midnight hits different. There's something liberating about moving to music when the world is asleep. Who else loves a good midnight dance session? 💃🌙",
-      platform: "YouTube",
-      platformIcon: "YouTube",
-      date: "2024-01-11",
-      status: "draft"
-    },
-    {
-      id: 6,
-      content: "The freedom to buy whatever you want (within reason) is such a luxury. Sometimes it's the small things that bring the most joy. What's something small that made you happy today? 🛍️💫",
-      platform: "LinkedIn",
-      platformIcon: "LinkedIn",
-      date: "2024-01-10",
-      status: "draft"
-    },
-    {
-      id: 7,
-      content: "Speaking kindly costs nothing but means everything. A simple 'thank you' or 'you're doing great' can completely change someone's day. Let's spread more kindness today 💝",
-      platform: "Threads",
-      platformIcon: "Threads",
-      date: "2024-01-09",
-      status: "draft"
-    }
+    { id: 1001, content: "Ý tưởng video mới: chia sẻ 5 mẹo tối ưu hồ sơ LinkedIn.", platform: "LinkedIn", platformIcon: "LinkedIn", date: "2025-09-01", status: "draft" },
+    { id: 1002, content: "Bài viết ngắn về thuật toán Facebook 2025 – điều gì thay đổi?", platform: "Facebook", platformIcon: "Facebook", date: "2025-09-02", status: "draft" },
+    { id: 1003, content: "Chuỗi bài Threads: Tổng hợp tài nguyên học AI cho người mới.", platform: "Threads", platformIcon: "Threads", date: "2025-09-03", status: "draft" },
+    { id: 1004, content: "Bảng mood Pinterest: màu sắc cho chiến dịch mùa thu.", platform: "Pinterest", platformIcon: "Pinterest", date: "2025-09-04", status: "draft" },
+    { id: 1005, content: "Tweet khảo sát: Bạn đăng nội dung lúc mấy giờ hiệu quả nhất?", platform: "Twitter", platformIcon: "Twitter", date: "2025-09-05", status: "draft" },
+    { id: 1006, content: "Ảnh trước–sau tối ưu bio Instagram, nên giữ gì – bỏ gì?", platform: "Instagram", platformIcon: "Instagram", date: "2025-09-06", status: "draft" },
+    { id: 1007, content: "Checklist sản xuất video YouTube ngắn trong 30 phút.", platform: "YouTube", platformIcon: "YouTube", date: "2025-09-07", status: "draft" },
+    { id: 1008, content: "Kịch bản TikTok: 3 hook mở đầu giữ người xem ở lại.", platform: "TikTok", platformIcon: "TikTok", date: "2025-09-08", status: "draft" },
+    { id: 1009, content: "Tổng hợp nguồn tin Bluesky đáng theo dõi về marketing.", platform: "Bluesky", platformIcon: "Bluesky", date: "2025-09-09", status: "draft" },
+    { id: 1010, content: "Mẹo tái sử dụng nội dung: từ bài blog thành 5 định dạng.", platform: "LinkedIn", platformIcon: "LinkedIn", date: "2025-09-10", status: "draft" }
   ])
 
   function handleSaveDraft() {
@@ -1807,7 +2249,6 @@ export default function CreatePage() {
     }
     setShowPublishModal(true)
   }
-
   const handlePublishConfirm = () => {
     console.log("handlePublishConfirm called")
     const active = openPosts.find((p) => p.id === selectedPostId)
@@ -1881,6 +2322,7 @@ export default function CreatePage() {
         content,
         platform: active.type,
         date: new Date().toISOString().slice(0, 10),
+        time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
       status: "published",
       }
       console.log("Adding to published posts:", newPublishedPost)
@@ -2073,10 +2515,10 @@ export default function CreatePage() {
         return (
           <div className="w-full max-w-none mx-0">
             <h2 className="text-2xl font-bold mb-6">Kết nối mạng xã hội và đăng nhập</h2>
-            <p className="text-white/70 mb-6">Connect to your social media and login.</p>
+            <p className="text-white/70 mb-6">Kết nối với mạng xã hội và đăng nhập.</p>
             <div className="grid sm:grid-cols-2 gap-4">
-              {[ 
-                { name: 'Twitter (X)', icon: '/x.png', url: 'https://twitter.com/login', connected: true },
+                {[ 
+                 { name: 'Twitter (X)', icon: '/x.png', url: 'https://twitter.com/login', connected: true },
                 { name: 'LinkedIn', icon: '/link.svg', url: 'https://www.linkedin.com/login', connected: false },
                 { name: 'Facebook', icon: '/fb.svg', url: 'https://www.facebook.com/login', connected: false },
                 { name: 'TikTok', icon: '/tiktok.png', url: 'https://www.tiktok.com/login', connected: false },
@@ -2112,7 +2554,7 @@ export default function CreatePage() {
                     ‹
                     </Button>
                   <div className="px-4 py-1 rounded-md border border-white/20 bg-white/10 text-white flex items-center justify-center">
-                    {vietnameseMonths[currentMonth]}
+                    {vietnameseMonths[currentMonth]}, {currentYear}
                   </div>
                   <Button size="icon" variant="ghost" className="w-8 h-8 text-white/80 hover:text-white" onClick={goNextMonth}>
                     ›
@@ -2216,6 +2658,11 @@ export default function CreatePage() {
                     cellDate.setDate(dayOffset + 1)
                     const dayNum = cellDate.getDate()
                     const inCurrentMonth = cellDate.getMonth() === currentMonth
+                    
+                    // Debug logging for first few cells
+                    if (i < 5) {
+                      console.log('Calendar rendering - CurrentMonth:', currentMonth, 'CurrentYear:', currentYear, 'Cell', i, 'Date:', cellDate.getFullYear(), cellDate.getMonth(), dayNum)
+                    }
                     const isSelected =
                       selectedYear === cellDate.getFullYear() &&
                       selectedMonth === cellDate.getMonth() &&
@@ -2223,6 +2670,7 @@ export default function CreatePage() {
                     const clickedKey = `${cellDate.getFullYear()}-${cellDate.getMonth()}-${dayNum}`
                     const isClicked = clickedDays.has(clickedKey)
                     // Get events for this day from state using month-specific key
+                    console.log('Calendar cell - Year:', cellDate.getFullYear(), 'Month:', cellDate.getMonth(), 'Day:', dayNum, 'InCurrentMonth:', inCurrentMonth)
                     const dayEvents = getCalendarEventsForDay(cellDate.getFullYear(), cellDate.getMonth(), dayNum)
                     const cellEvents: Array<{ platform: string; label: string; color: string; text: string; icon: string }> = dayEvents.map((event, eventIdx) => {
                       console.log("Rendering calendar note for platform:", event.platform)
@@ -2296,9 +2744,9 @@ export default function CreatePage() {
                                            cellDate.getMonth() === currentDate.getMonth() && 
                                            cellDate.getFullYear() === currentDate.getFullYear()
                             return isToday ? (
-                              <div className="absolute -top-1 -left-1 w-6 h-6 bg-[#E33265] rounded-full flex items-center justify-center">
-                                <div className="text-xs text-white font-medium">{dayNum}</div>
-                              </div>
+                            <div className="absolute -top-1 -left-1 w-6 h-6 bg-[#E33265] rounded-full flex items-center justify-center">
+                              <div className="text-xs text-white font-medium">{dayNum}</div>
+              </div>
                             ) : null
                           })()}
                           <div className={`text-xs ${inCurrentMonth ? 'text-white/90' : 'text-white/40'}`}>{dayNum}</div>
@@ -2323,7 +2771,7 @@ export default function CreatePage() {
                                   alt={ev.platform} 
                                   className={`w-4 h-4 ${ev.platform === 'Twitter' || ev.platform === 'Threads' || ev.platform === 'TikTok' ? 'filter brightness-0 invert' : ''}`}
                                 />
-                                <span>{ev.label}</span>
+                                <span style={{ fontFamily: '"Fira Mono", monospace', fontWeight: '500' }}>{ev.label}</span>
                               </button>
                             )
                           })}
@@ -2423,15 +2871,17 @@ export default function CreatePage() {
                             value={noteTime.hour}
                             onChange={(e) => setNoteTime(prev => ({...prev, hour: e.target.value}))}
                             className="w-12 bg-gray-800/50 text-white rounded px-2 py-1 text-center"
+                            style={{ fontFamily: '"Fira Mono", monospace', fontWeight: '500' }}
                             placeholder="10"
                             maxLength={2}
                           />
-                          <span className="text-white">:</span>
+                          <span className="text-white" style={{ fontFamily: '"Fira Mono", monospace', fontWeight: '500' }}>:</span>
                           <input
                             type="text"
                             value={noteTime.minute}
                             onChange={(e) => setNoteTime(prev => ({...prev, minute: e.target.value}))}
                             className="w-12 bg-gray-800/50 text-white rounded px-2 py-1 text-center"
+                            style={{ fontFamily: '"Fira Mono", monospace', fontWeight: '500' }}
                             placeholder="00"
                             maxLength={2}
                           />
@@ -2439,6 +2889,7 @@ export default function CreatePage() {
                             value={noteTime.amPm}
                             onChange={(e) => setNoteTime(prev => ({...prev, amPm: e.target.value}))}
                             className="bg-gray-800/50 text-white rounded px-2 py-1"
+                            style={{ fontFamily: '"Fira Mono", monospace', fontWeight: '500' }}
                           >
                             <option value="AM">AM</option>
                             <option value="PM">PM</option>
@@ -2509,7 +2960,6 @@ export default function CreatePage() {
             )}
           </div>
         )
-
       case "drafts":
         return (
             <div className="w-full max-w-none mx-0 overflow-hidden h-full flex flex-col">
@@ -2523,7 +2973,7 @@ export default function CreatePage() {
                     onClick={() => setShowDraftPlatformDropdown(!showDraftPlatformDropdown)}
                     className="flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors"
                   >
-                    <span>Filter by Platform</span>
+                    <span>Lọc theo nền tảng</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -2561,8 +3011,8 @@ export default function CreatePage() {
                   onChange={(e) => setDraftDateFilter(e.target.value)}
                   className="appearance-none flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors cursor-pointer pr-8"
                 >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
+                  <option value="newest">Mới nhất</option>
+                  <option value="oldest">Cũ nhất</option>
                 </select>
                 <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -2577,7 +3027,7 @@ export default function CreatePage() {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search..."
+                    placeholder="Tìm kiếm..."
                     value={draftSearchTerm}
                     onChange={(e) => setDraftSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] placeholder-gray-400 focus:outline-none focus:border-[#E33265] transition-colors"
@@ -2587,8 +3037,8 @@ export default function CreatePage() {
             </div>
             
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-              <div className="space-y-[1px]">
-                {filterAndSortPosts(draftPosts, draftSearchTerm, draftDateFilter, draftPlatformFilter).map((post) => (
+            <div className="space-y-[1px]">
+              {filterAndSortPosts(draftPosts, draftSearchTerm, draftDateFilter, draftPlatformFilter).map((post) => (
                 <div 
                   key={post.id} 
                   className="group rounded-xl hover:bg-[#E33265]/70 transition-colors cursor-pointer"
@@ -2615,7 +3065,7 @@ export default function CreatePage() {
                     </div>
                     {/* Right: date and delete button */}
                     <div className="flex items-center text-white/80 flex-shrink-0 gap-2 ml-4">
-                      <span className="text-sm whitespace-nowrap">{post.date}</span>
+                      <span className="text-sm whitespace-nowrap">{post.date} {post.time}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -2630,7 +3080,7 @@ export default function CreatePage() {
                     </div>
                   </div>
                 </div>
-                ))}
+              ))}
               </div>
             </div>
           </div>
@@ -2639,7 +3089,7 @@ export default function CreatePage() {
       case "published":
         return (
             <div className="w-full max-w-none mx-0 overflow-hidden h-full flex flex-col">
-            <h2 className="text-2xl font-bold mb-6">Published Posts</h2>
+            <h2 className="text-2xl font-bold mb-6">Bài đã đăng</h2>
               
               {/* Filter and Search Controls */}
               <div className="flex gap-4 mb-6">
@@ -2649,7 +3099,7 @@ export default function CreatePage() {
                     onClick={() => setShowPublishedPlatformDropdown(!showPublishedPlatformDropdown)}
                     className="flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors"
                   >
-                    <span>Filter by Platform</span>
+                    <span>Lọc theo nền tảng</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -2687,8 +3137,8 @@ export default function CreatePage() {
                   onChange={(e) => setPublishedDateFilter(e.target.value)}
                   className="appearance-none flex items-center gap-2 px-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] hover:bg-[#3A3A42] transition-colors cursor-pointer pr-8"
                 >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
+                  <option value="newest">Mới nhất</option>
+                  <option value="oldest">Cũ nhất</option>
                 </select>
                 <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -2703,7 +3153,7 @@ export default function CreatePage() {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search..."
+                    placeholder="Tìm kiếm..."
                     value={publishedSearchTerm}
                     onChange={(e) => setPublishedSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-[#2A2A30] border border-[#3A3A42] rounded-lg text-[#F5F5F7] placeholder-gray-400 focus:outline-none focus:border-[#E33265] transition-colors"
@@ -2713,7 +3163,7 @@ export default function CreatePage() {
             </div>
             
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-              <div className="space-y-[1px]">
+            <div className="space-y-[1px]">
                 {(() => {
                   const filteredPosts = filterAndSortPosts(publishedPosts, publishedSearchTerm, publishedDateFilter, publishedPlatformFilter)
                   const maxWidth = getMaxProfileWidth(filteredPosts)
@@ -2746,26 +3196,31 @@ export default function CreatePage() {
                             alt="Profile" 
                             className="w-full h-full object-cover" 
                           />
-                        </div>
-                        <span className="text-xs whitespace-nowrap">
+                  </div>
+                        <span className="text-xs whitespace-nowrap" style={{ 
+                          fontFamily: '"Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"', 
+                          fontWeight: '600',
+                          fontSize: '0.75rem',
+                          color: 'rgba(255,255,255,0.9)'
+                        }}>
                           {getAccountsForPlatform(post.platform)[0]?.username || "Unknown Account"}
                         </span>
-                      </div>
-                      <span className="text-xs whitespace-nowrap w-full">{post.date}</span>
                   </div>
-                  </div>
+                      <span className="text-xs whitespace-nowrap w-full">{post.date} <span className="opacity-70" style={{ marginLeft: '5px' }}>{post.time}</span></span>
                 </div>
+            </div>
+                    </div>
                 ))
                 })()}
-              </div>
-            </div>
+                  </div>
+                </div>
           </div>
         )
 
       case "failed":
         return (
           <div className="w-full max-w-none mx-0 overflow-hidden h-full flex flex-col">
-            <h2 className="text-2xl font-bold mb-6">Failed Posts</h2>
+            <h2 className="text-2xl font-bold mb-6">Bài đăng thất bại</h2>
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
               <div className="space-y-[1px] pb-0">
                 {(() => {
@@ -2799,13 +3254,18 @@ export default function CreatePage() {
                             alt="Profile" 
                             className="w-full h-full object-cover" 
                           />
-                        </div>
-                        <span className="text-xs whitespace-nowrap">
+                    </div>
+                        <span className="text-xs whitespace-nowrap" style={{ 
+                          fontFamily: '"Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"', 
+                          fontWeight: '600',
+                          fontSize: '0.75rem',
+                          color: 'rgba(255,255,255,0.9)'
+                        }}>
                           {getAccountsForPlatform(post.platform)[0]?.username || "Unknown Account"}
                         </span>
-                      </div>
-                      <span className="text-xs whitespace-nowrap w-full">{post.date}</span>
-                    </div>
+                  </div>
+                      <span className="text-xs whitespace-nowrap w-full">{post.date} <span className="opacity-70" style={{ marginLeft: '5px' }}>{post.time}</span></span>
+                </div>
                   </div>
                 </div>
                 ))
@@ -2817,7 +3277,131 @@ export default function CreatePage() {
 
       case "videos":
         return (
-          <div className="w-full max-w-none mx-0">
+          <div className="w-full max-w-none mx-auto">
+            {uploadedMedia.length > 0 && uploadedMedia.some(media => media.type === 'video') && showVideoPlayer ? (
+              // Video Player Backdrop
+              <div 
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                onClick={closeVideoPlayer}
+              >
+                {/* Video Player Interface */}
+                <div 
+                  className="bg-white rounded-lg p-3 relative w-1/2 max-w-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                      <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-12h5v12z" />
+                      </svg>
+                      <span className="text-sm text-gray-700">Presets</span>
+                    </button>
+                    <button 
+                      onClick={closeVideoPlayer}
+                      className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Video Player */}
+                <div className="relative mb-4">
+                  <video 
+                    src={uploadedMedia.find(media => media.type === 'video')?.preview} 
+                    className="w-full h-48 object-cover rounded-lg"
+                    controls
+                  />
+                  {/* Video Controls Overlay */}
+                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <button className="p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </button>
+                      <div className="flex-1 bg-white/20 rounded-full h-1 mx-2">
+                        <div className="bg-white rounded-full h-1 w-1/3"></div>
+                      </div>
+                    </div>
+                    <button className="p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Preset Info */}
+                <div className="text-center text-gray-500 text-sm mb-6">No Preset</div>
+
+                {/* Video Editing Options */}
+                <div className="space-y-4">
+                  {/* Language Selection */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Language</span>
+                    <div className="relative">
+                      <select className="flex items-center gap-2 bg-gray-50 border border-red-300 rounded-lg px-3 py-2 pr-8 focus:border-red-500 focus:ring-1 focus:ring-red-500 appearance-none cursor-pointer text-gray-900">
+                        <option value="english" className="flex items-center gap-2 text-gray-900">
+                          🇺🇸 English
+                        </option>
+                        <option value="vietnamese" className="flex items-center gap-2 text-gray-900">
+                          🇻🇳 Vietnamese
+                        </option>
+                      </select>
+                      <svg className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Multi-Speaker Theme */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">Multi-Speaker theme</span>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <path d="M12 17h.01"></path>
+                      </svg>
+                    </div>
+                    <div className="w-12 h-6 bg-gray-300 rounded-full relative">
+                      <div className="w-5 h-5 bg-gray-500 rounded-full absolute top-0.5 left-0.5 transition-transform"></div>
+                    </div>
+                  </div>
+
+                  {/* Translate Captions */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">Translate Captions</span>
+                      <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                      </svg>
+                    </div>
+                    <div className="w-12 h-6 bg-gray-300 rounded-full relative">
+                      <div className="w-5 h-5 bg-gray-500 rounded-full absolute top-0.5 left-0.5 transition-transform"></div>
+                    </div>
+                  </div>
+
+                  {/* Generate Captions Button */}
+                  <button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    Generate captions
+                  </button>
+                </div>
+                </div>
+              </div>
+            ) : (
+              // Default Browse Content
+              <div>
             {/* Quick start */}
             <h2 className="text-lg font-semibold mb-3">Bắt đầu nhanh</h2>
 
@@ -2903,6 +3487,8 @@ export default function CreatePage() {
                 </div>
               </Card>
             </div>
+              </div>
+            )}
           </div>
         )
 
@@ -2993,13 +3579,14 @@ export default function CreatePage() {
             </Card>
           </div>
         )
-
       default:
         return (
           <div className="max-w-4xl mx-auto flex flex-col h-full">
-            {/* Tabs row: dynamic per openPosts */}
+            {/* Tabs row: dynamic per openPosts - horizontally scrollable */}
             <div className="flex items-center gap-3 mb-4">
-              {openPosts.map((p) => (
+              {/* Tabs container with fixed width and horizontal scroll */}
+              <div className="flex items-center gap-3 min-w-0 flex-1 overflow-x-auto scrollbar-hide">
+                {openPosts.map((p) => (
                 <div key={p.id} className={`flex items-center gap-2 px-3 py-1 rounded-md border ${selectedPostId === p.id ? "border-[#E33265] text-white" : "border-white/10 text-gray-300"}`}>
                   <button
                     onClick={() => setSelectedPostId(p.id)}
@@ -3026,19 +3613,34 @@ export default function CreatePage() {
                     <CloseIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              ))}
+                ))}
+              </div>
+              
+              {/* Add Post button always on the far right - fixed position */}
               <div
-                className="relative"
+                className="relative flex-shrink-0"
                 ref={postPickerRef}
                 onMouseEnter={handlePostPickerMouseEnter}
                 onMouseLeave={startPostPickerHideTimer}
               >
-                <Button variant="ghost" size="sm" className={`${isAddPostActive ? 'bg-[#E33265] text-white hover:bg-[#c52b57]' : ''}`}>
-                  <PlusIcon className="w-4 h-4 mr-1" /> Add Post
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`${isAddPostActive ? 'bg-[#E33265] text-white hover:bg-[#c52b57]' : ''}`}
+                  onClick={() => {
+                    if (showPostPicker) {
+                      closePostPickerWithDelay()
+                    } else {
+                      handlePostPickerMouseEnter()
+                    }
+                  }}
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" /> Thêm bài
+                </Button>
                 {showPostPicker && (
                   <div 
-                    className={`absolute z-20 mt-2 w-[13.75rem] bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] p-3 transition-opacity duration-75 ${
+                    data-post-picker
+                    className={`absolute right-0 z-20 mt-2 w-[13.75rem] bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] p-3 transition-opacity duration-75 ${
                       isPostPickerVisible ? 'opacity-100' : 'opacity-0'
                     }`}
                   >
@@ -3058,6 +3660,7 @@ export default function CreatePage() {
                           key={idx}
                           onClick={() => {
                             const newId = Date.now()
+                            // Add new tab to the end (right side)
                             setOpenPosts((prev) => [...prev, { id: newId, type: item.name }])
                             setPostContents((pc) => ({ ...pc, [newId]: "" }))
                             setSelectedPostId(newId)
@@ -3141,7 +3744,7 @@ export default function CreatePage() {
                                   </button>
                                   <div className="flex-1 bg-white/20 rounded-full h-1 mx-2">
                                     <div className="bg-white rounded-full h-1 w-1/3"></div>
-                                  </div>
+              </div>
                                 </div>
                                 <button className="p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors">
                                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3303,7 +3906,7 @@ export default function CreatePage() {
                       Nhân bản
                   </Button>
                     {showClonePicker && (
-                      <div className="absolute z-20 bottom-full mb-2 right-0 w-[13.75rem] bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] p-3" onMouseEnter={() => setShowClonePicker(true)} onMouseLeave={() => setShowClonePicker(false)}>
+                      <div data-clone-picker className="absolute z-20 bottom-full mb-2 right-0 w-[13.75rem] bg-[#2A2A30] border border-[#3A3A42] rounded-lg shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] p-3" onMouseEnter={() => setShowClonePicker(true)} onMouseLeave={() => setShowClonePicker(false)}>
                         <div className="space-y-1">
                           {[
                             { name: "Twitter", icon: "/x.png" },
@@ -3371,7 +3974,6 @@ export default function CreatePage() {
                     }
                   }}
                   tabIndex={0}
-                  autoFocus
                 >
                   <div className="text-center">
                     <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -3395,13 +3997,236 @@ export default function CreatePage() {
     }
   }
 
+  // Close source modal on outside click or Escape
+  useEffect(() => {
+    if (!showSourceModal) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSourceModal(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showSourceModal])
+
+  // Close video modal on outside click or Escape
+  useEffect(() => {
+    if (!showVideoModal) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowVideoModal(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showVideoModal])
+
+  // Close image modal on outside click or Escape
+  useEffect(() => {
+    if (!showImageModal) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowImageModal(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showImageModal])
+
+  // Close retry confirmation modal on outside click or Escape
+  useEffect(() => {
+    if (!showRetryConfirm) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowRetryConfirm(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showRetryConfirm])
+
+  // Close retry loading modal on outside click or Escape
+  useEffect(() => {
+    if (!showRetryLoading) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowRetryLoading(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showRetryLoading])
+
+  // Close retry result modal on outside click or Escape
+  useEffect(() => {
+    if (!showRetryResult) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowRetryResult(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showRetryResult])
+
+  // Close delete confirmation popup on outside click or Escape
+  useEffect(() => {
+    if (!showDeleteConfirm) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowDeleteConfirm(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showDeleteConfirm])
+
+  // Close publish confirmation modal on outside click or Escape
+  useEffect(() => {
+    if (!showPublishConfirm) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPublishConfirm(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showPublishConfirm])
+
+  // Close video player backdrop on outside click or Escape
+  useEffect(() => {
+    if (!showVideoPlayer) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeVideoPlayer()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showVideoPlayer])
+
+  // Close video processing modal on outside click or Escape
+  useEffect(() => {
+    if (!showVideoProcessing) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowVideoProcessing(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showVideoProcessing])
+
+  // Close platform dropdowns on outside click or Escape
+  useEffect(() => {
+    if (!showDraftPlatformDropdown && !showPublishedPlatformDropdown) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('[data-draft-platform-dropdown]') && !target.closest('[data-published-platform-dropdown]')) {
+        setShowDraftPlatformDropdown(false)
+        setShowPublishedPlatformDropdown(false)
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDraftPlatformDropdown(false)
+        setShowPublishedPlatformDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showDraftPlatformDropdown, showPublishedPlatformDropdown])
+
+  // Close post picker on outside click or Escape
+  useEffect(() => {
+    if (!showPostPicker) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('[data-post-picker]')) {
+        setShowPostPicker(false)
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPostPicker(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showPostPicker])
+
+  // Close clone picker on outside click or Escape
+  useEffect(() => {
+    if (!showClonePicker) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('[data-clone-picker]')) {
+        setShowClonePicker(false)
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowClonePicker(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showClonePicker])
+
+  // Close model menu on outside click or Escape
+  useEffect(() => {
+    if (!showModelMenu) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('[data-model-menu]')) {
+        setShowModelMenu(false)
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModelMenu(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showModelMenu])
+
+  // Close account dropdown on outside click or Escape
+  useEffect(() => {
+    if (!showAccountDropdown) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('[data-account-dropdown]')) {
+        setShowAccountDropdown(false)
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAccountDropdown(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [showAccountDropdown])
   return (
     <div className="h-screen bg-[#1E1E23] text-white">
       <div className="relative flex h-screen">
         {/* Left Sidebar Overlay + Spacer so main layout doesn't shift */}
-        <div className="w-16" />
+        <div className="w-[79px]" />
         <div 
-          className={`${isSidebarOpen ? 'w-64' : 'w-16'} transition-[width] duration-150 ease-out border-r border-white/10 p-4 pt-[30px] absolute inset-y-0 left-0 z-20 bg-[#1E1E23]`}
+          className={`${isSidebarOpen ? 'w-64' : 'w-[79px]'} transition-[width] duration-150 ease-out border-r border-white/10 p-4 pt-[30px] absolute inset-y-0 left-0 z-20 bg-[#1E1E23]`}
           onMouseEnter={() => setIsSidebarOpen(true)}
           onMouseLeave={() => setIsSidebarOpen(false)}
         >
@@ -3413,7 +4238,15 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("create"); window.history.pushState(null, "", "/create") }}
             >
-              <PlusIcon className="w-6 h-6 mr-2" />
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Create.svg" alt="Create" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Create.svg" alt="Create" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Tạo bài viết</span>}
             </Button>
             <Button
@@ -3423,7 +4256,15 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("calendar"); window.history.pushState(null, "", "/lich") }}
             >
-              <CalendarIcon className="w-6 h-6 mr-2" />
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Calendar.svg" alt="Calendar" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Calendar.svg" alt="Calendar" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Lịch</span>}
             </Button>
             <Button
@@ -3433,7 +4274,15 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("drafts"); window.history.pushState(null, "", "/ban-nhap") }}
             >
-              <span className="w-6 h-6 mr-2 text-xl">📝</span>
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Draft.svg" alt="Draft" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Draft.svg" alt="Draft" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Bản nháp</span>}
             </Button>
             <Button
@@ -3443,7 +4292,15 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("published"); window.history.pushState(null, "", "/bai-da-dang") }}
             >
-              <SendIcon className="w-6 h-6 mr-2" />
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Published.svg" alt="Published" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Published.svg" alt="Published" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Bài đã đăng</span>}
             </Button>
             <Button
@@ -3453,7 +4310,15 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("failed"); window.history.pushState(null, "", "/bai-loi") }}
             >
-              <span className="w-6 h-6 mr-2 text-red-400 text-xl">⚠</span>
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Failed.svg" alt="Failed" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Failed.svg" alt="Failed" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Bài lỗi</span>}
             </Button>
             <Button
@@ -3463,7 +4328,15 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("videos"); window.history.pushState(null, "", "/videos") }}
             >
-              <VideoIcon className="w-6 h-6 mr-2" />
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Video.svg" alt="Video" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Video.svg" alt="Video" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Video</span>}
             </Button>
             <Button
@@ -3473,21 +4346,71 @@ export default function CreatePage() {
               }`}
               onClick={() => { setActiveSection("api"); window.history.pushState(null, "", "/api-dashboard") }}
             >
-              <span className="w-6 h-6 mr-2 text-xl">⚡</span>
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/API.svg" alt="API" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/API.svg" alt="API" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Bảng điều khiển API</span>}
             </Button>
-          </nav>
-
-          {/* Settings */}
-          <div className="mb-4">
             <Button
               variant="ghost"
               className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${activeSection === 'settings' ? 'bg-purple-500/10' : ''}`}
               onClick={() => { setActiveSection('settings'); window.history.pushState(null, '', '/settings') }}
             >
-              <SettingsIcon className="w-6 h-6 mr-2" />
+              {isSidebarOpen ? (
+                <div className="mr-2">
+                  <img src="/Settings.svg" alt="Settings" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center px-2">
+                  <img src="/Settings.svg" alt="Settings" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                </div>
+              )}
               {isSidebarOpen && <span>Cài đặt</span>}
             </Button>
+          </nav>
+
+          {/* Language indicator: always visible. Full controls only when sidebar is open */}
+          <div className="mt-auto pt-4 border-t border-white/10">
+            {isSidebarOpen ? (
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <img src="/Language.svg" alt="Language" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+                  <span className="text-xs text-white/60 font-medium">Ngôn ngữ</span>
+                </div>
+                <div className="flex items-center bg-[#2A2A30] rounded-lg p-1">
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                      language === 'vi' 
+                        ? 'bg-purple-500 text-white shadow-sm' 
+                        : 'text-white/60 hover:text-white/80'
+                    }`}
+                    onClick={() => setLanguage('vi')}
+                  >
+                    VI
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
+                      language === 'en' 
+                        ? 'bg-purple-500 text-white shadow-sm' 
+                        : 'text-white/60 hover:text-white/80'
+                    }`}
+                    onClick={() => setLanguage('en')}
+                  >
+                    EN
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center px-2">
+                <img src="/Language.svg" alt="Language" className="w-6 h-6 flex-none" style={{ width: 24, height: 24 }} />
+              </div>
+            )}
           </div>
 
         </div>
@@ -3495,7 +4418,7 @@ export default function CreatePage() {
         {/* Sources Column moved out of sidebar - only show on create page */}
         {activeSection === "create" && (
           <div
-          className="w-64 border-r border-white/10 p-4 pt-[30px]"
+          className="w-[241px] border-r border-white/10 p-4 pt-[30px]"
           >
             <div className="flex items-center justify-between mb-2">
             <Button
@@ -3518,12 +4441,12 @@ export default function CreatePage() {
               >
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {[
-                    { key: "text", label: "Text" },
-                    { key: "article", label: "Article Link" },
+                    { key: "text", label: "Văn bản" },
+                    { key: "article", label: "Liên kết bài viết" },
                     { key: "youtube", label: "YouTube" },
                     { key: "tiktok", label: "TikTok" },
                     { key: "pdf", label: "PDF" },
-                    { key: "audio", label: "Audio" },
+                    { key: "audio", label: "Âm thanh" },
                   ].map((t) => (
                     <Button
                       key={t.key}
@@ -3539,29 +4462,29 @@ export default function CreatePage() {
 
                 <div className="space-y-2">
                   {selectedSourceType === "text" && (
-                    <Textarea placeholder="Paste or type your text source..." className="bg-gray-900/50 border-white/10" />
+                    <Textarea placeholder="Dán hoặc nhập nguồn văn bản..." className="bg-gray-900/50 border-white/10" />
                   )}
                   {selectedSourceType !== "text" && (
                     <Input
                       placeholder={
                         selectedSourceType === "article"
-                          ? "Paste article URL..."
+                          ? "Dán URL bài viết..."
                           : selectedSourceType === "youtube"
-                          ? "Paste YouTube link..."
+                          ? "Dán liên kết YouTube..."
                           : selectedSourceType === "tiktok"
-                          ? "Paste TikTok link..."
+                          ? "Dán liên kết TikTok..."
                           : selectedSourceType === "pdf"
-                          ? "Paste PDF link..."
-                          : "Paste audio link..."
+                          ? "Dán liên kết PDF..."
+                          : "Dán liên kết âm thanh..."
                       }
                       className="bg-gray-900/50 border-white/10"
                     />
                   )}
 
                   <div className="flex gap-2 pt-1">
-                    <Button size="sm" className="bg-[#E33265] hover:bg-[#c52b57]">Save</Button>
+                    <Button size="sm" className="bg-[#E33265] hover:bg-[#c52b57]">Lưu</Button>
                     <Button size="sm" variant="outline" className="bg-transparent" onClick={() => setIsAddingSource(false)}>
-                      Cancel
+                      Hủy
             </Button>
                   </div>
                 </div>
@@ -3591,7 +4514,7 @@ export default function CreatePage() {
                         <ChevronDownIcon className={`w-4 h-4 transition-transform ${showModelMenu ? 'rotate-180' : ''}`} />
                       </button>
                       {showModelMenu && (
-                        <div className="absolute mt-2 w-56 bg-[#2A2A30] border border-[#3A3A42] rounded-md shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] py-2 z-20">
+                        <div data-model-menu className="absolute mt-2 w-56 bg-[#2A2A30] border border-[#3A3A42] rounded-md shadow-lg shadow-[0_0_0_1px_rgba(255,255,255,0.08)] py-2 z-20">
                           {["ChatGPT","Claude Sonnet 4","gpt-4.1","o4-mini","o3","gpt-4o"].map((m) => (
                             <button
                               key={m}
@@ -3625,7 +4548,7 @@ export default function CreatePage() {
                     <div className="text-sm text-left">
                       <div className="bg-[#2A2A30] text-[#F5F5F7] inline-block rounded-lg p-3 border border-[#3A3A42]">
                         <div className="flex items-center space-x-1">
-                          <span>AI is typing</span>
+                          <span>AI đang nhập</span>
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-[#F5F5F7] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                             <div className="w-2 h-2 bg-[#F5F5F7] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -3674,7 +4597,7 @@ export default function CreatePage() {
           <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-2xl w-[1000px] max-w-[95vw] max-h-[90vh] overflow-hidden shadow-xl shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h2 className="text-lg font-semibold text-white">Edit Source</h2>
+              <h2 className="text-lg font-semibold text-white">Chỉnh sửa nguồn</h2>
               <button className="text-gray-400 hover:text-white" onClick={() => setShowSourceModal(false)}>
                 <CloseIcon className="w-5 h-5" />
               </button>
@@ -3683,12 +4606,12 @@ export default function CreatePage() {
             <div className="px-6 pt-4">
               <div className="grid grid-cols-7 gap-3">
                 {[
-                  { key: "text", label: "Text" },
-                  { key: "article", label: "Article" },
+                  { key: "text", label: "Văn bản" },
+                  { key: "article", label: "Bài viết" },
                   { key: "youtube", label: "YouTube" },
                   { key: "tiktok", label: "TikTok" },
                   { key: "perplexity", label: "Perplexity" },
-                  { key: "audio", label: "Audio" },
+                  { key: "audio", label: "Âm thanh" },
                   { key: "pdf", label: "PDF" },
                 ].map((t) => (
                   <button
@@ -3703,29 +4626,29 @@ export default function CreatePage() {
             </div>
             {/* Body */}
             <div className="px-6 py-4 space-y-3 overflow-auto" style={{ maxHeight: "60vh" }}>
-              <div className="text-white">Text</div>
+              <div className="text-white">Văn bản</div>
               {selectedSourceType === 'text' && (
-                <Textarea placeholder="Paste text here" className="bg-gray-900/50 border-white/10 h-40" />
+                <Textarea placeholder="Dán văn bản vào đây" className="bg-gray-900/50 border-white/10 h-40" />
               )}
               {selectedSourceType !== 'text' && (
                 <Input
                   placeholder={
-                    selectedSourceType === 'article' ? 'Paste article URL...' :
-                    selectedSourceType === 'youtube' ? 'Paste YouTube URL...' :
-                    selectedSourceType === 'tiktok' ? 'Paste TikTok URL...' :
-                    selectedSourceType === 'pdf' ? 'Paste PDF URL...' :
-                    'Paste audio URL...'
+                    selectedSourceType === 'article' ? 'Dán URL bài viết...' :
+                    selectedSourceType === 'youtube' ? 'Dán URL YouTube...' :
+                    selectedSourceType === 'tiktok' ? 'Dán URL TikTok...' :
+                    selectedSourceType === 'pdf' ? 'Dán URL PDF...' :
+                    'Dán URL âm thanh...'
                   }
                   className="bg-gray-900/50 border-white/10"
                 />
               )}
               <label className="flex items-center gap-3 text-white pt-2">
                 <input type="checkbox" className="accent-[#E33265]" />
-                <span>Save Source?</span>
+                <span>Lưu nguồn?</span>
               </label>
               <details className="text-white/90">
-                <summary className="cursor-pointer select-none">Advanced settings</summary>
-                <div className="mt-2 text-sm text-gray-300">No additional settings yet.</div>
+                <summary className="cursor-pointer select-none">Cài đặt nâng cao</summary>
+                <div className="mt-2 text-sm text-gray-300">Chưa có cài đặt bổ sung.</div>
               </details>
             </div>
             {/* Footer */}
@@ -3734,7 +4657,7 @@ export default function CreatePage() {
                 className="w-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white py-3 rounded-md"
                 onClick={() => setShowSourceModal(false)}
               >
-                Add
+                Thêm
               </button>
             </div>
           </div>
@@ -3742,8 +4665,8 @@ export default function CreatePage() {
       )}
 
       {/* Video Upload Modal */}
-      {showVideoModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {showVideoModal && !showVideoProcessing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowVideoModal(false) }}>
           <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-6 w-full max-w-md mx-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-6">
@@ -3840,28 +4763,138 @@ export default function CreatePage() {
 
             {/* Sample Video Section */}
             {!selectedVideoFile && (
-              <div className="mt-6">
-                <p className="text-sm text-gray-400 mb-3">
-                  Or try this sample video 👉
-                </p>
-                <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer">
-                  <div className="w-16 h-12 bg-gray-700 rounded flex items-center justify-center">
-                    <PlayIcon className="w-4 h-4 text-gray-400" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">Demo</div>
-                    <div className="text-xs text-gray-400">32s</div>
-                  </div>
+            <div className="mt-6">
+              <p className="text-sm text-gray-400 mb-3">
+                Or try this sample video 👉
+              </p>
+              <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer">
+                <div className="w-16 h-12 bg-gray-700 rounded flex items-center justify-center">
+                  <PlayIcon className="w-4 h-4 text-gray-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white">Demo</div>
+                  <div className="text-xs text-gray-400">32s</div>
                 </div>
               </div>
+            </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* White Video Processing Modal - replaces gray modal when video is selected */}
+      {showVideoProcessing && selectedVideoFile && videoPreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowVideoProcessing(false) }}>
+          <div className="bg-white rounded-2xl w-[1000px] max-w-[95vw] max-h-[90vh] overflow-hidden shadow-xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleBackToUpload}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h2 className="text-xl font-semibold text-gray-900">Generate captions with AI</h2>
+              </div>
+              <button
+                onClick={() => setShowVideoProcessing(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Video Player Section */}
+            <div className="px-6 py-4">
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video 
+                  src={videoPreview} 
+                  className="w-full h-64 object-cover"
+                  controls
+                  muted
+                />
+                <div className="absolute top-4 right-4">
+                  <button className="bg-white/90 hover:bg-white text-gray-900 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
+                    </svg>
+                    Presets
+                  </button>
+                </div>
+                <div className="absolute bottom-4 left-4">
+                  <span className="bg-black/70 text-white px-2 py-1 rounded text-sm">No Preset</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Settings Section */}
+            <div className="px-6 pb-6">
+              <div className="space-y-4">
+                {/* Language Selection */}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Language</label>
+                  <div className="flex items-center gap-2">
+                    <img src="https://flagcdn.com/w20/us.png" alt="US Flag" className="w-5 h-4" />
+                    <select className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option>English</option>
+                      <option>Spanish</option>
+                      <option>French</option>
+                      <option>German</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Multi-Speaker Theme */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Multi-Speaker theme</label>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {/* Translate Captions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Translate Captions</label>
+                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Generate Captions Button */}
+              <div className="mt-6">
+                <button 
+                  onClick={handleGenerateCaptions}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                  Generate captions
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Image Upload Modal for Add Media */}
       {showImageModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowImageModal(false) }}>
           <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-6 w-full max-w-md mx-4 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Share some pictures</h2>
@@ -3902,52 +4935,74 @@ export default function CreatePage() {
             {selectedImageFiles.length > 0 && (
               <div className="mt-6">
                 <p className="text-sm text-gray-400 mb-3">
-                  Click on an image to add it to your post:
+                  Selected images ({selectedImageFiles.length}):
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   {selectedImageFiles.map((file, index) => (
-                    <div 
-                      key={index} 
-                      className="relative group cursor-pointer"
-                      onClick={() => {
-                        // Add to main content area
-                        const newMedia = {
-                          type: 'image' as const,
-                          file,
-                          preview: imagePreviews[index]
-                        }
-                        setUploadedMedia(prev => [...prev, newMedia])
-                        
-                        // Close the popup
-                        setShowImageModal(false)
-                        
-                        // Clear the selected files
-                        setSelectedImageFiles([])
-                        setImagePreviews([])
-                        
-                        // Reset file input
-                        const input = document.getElementById('image-upload') as HTMLInputElement
-                        if (input) input.value = ''
-                      }}
-                    >
+                    <div key={index} className="relative group">
                       <img 
                         src={imagePreviews[index]} 
                         alt={file.name}
-                        className="w-full h-20 object-cover rounded-lg hover:opacity-80 transition-opacity"
+                        className="w-full h-20 object-cover rounded-lg"
                       />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                        <div className="text-white text-sm font-medium">Add to Post</div>
+                        <button
+                          onClick={() => {
+                            const newFiles = selectedImageFiles.filter((_, i) => i !== index)
+                            const newPreviews = imagePreviews.filter((_, i) => i !== index)
+                            setSelectedImageFiles(newFiles)
+                            setImagePreviews(newPreviews)
+                            // Reset file input if no files left
+                            if (newFiles.length === 0) {
+                              const input = document.getElementById('image-upload') as HTMLInputElement
+                              if (input) input.value = ''
+                            }
+                          }}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
                       <div className="text-xs text-gray-400 mt-1 truncate">{file.name}</div>
                     </div>
                   ))}
+                </div>
+                
+                {/* Upload Button */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => {
+                      // Add all selected images to main content area
+                      const newMedia = selectedImageFiles.map((file, index) => ({
+                        type: 'image' as const,
+                        file,
+                        preview: imagePreviews[index]
+                      }))
+                      setUploadedMedia(prev => [...prev, ...newMedia])
+                      
+                      // Close the popup
+                      setShowImageModal(false)
+                      
+                      // Clear the selected files
+                      setSelectedImageFiles([])
+                      setImagePreviews([])
+                      
+                      // Reset file input
+                      const input = document.getElementById('image-upload') as HTMLInputElement
+                      if (input) input.value = ''
+                    }}
+                    className="bg-[#E33265] hover:bg-[#E33265]/80 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                  >
+                    Upload {selectedImageFiles.length} image{selectedImageFiles.length > 1 ? 's' : ''}
+                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
       )}
-
       {/* Publish Modal */}
       {showPublishModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -4004,7 +5059,7 @@ export default function CreatePage() {
                   
                   {/* Account Dropdown: only show if more than one account for platform */}
                   {showAccountDropdown && getAccountsForPlatform(selectedPlatform).length > 1 && (
-                    <div ref={accountDropdownRef} className="absolute top-full left-0 right-0 mt-1 bg-[#1E1E23] rounded-lg border border-gray-700 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] z-10 max-h-48 overflow-y-auto">
+                    <div ref={accountDropdownRef} data-account-dropdown className="absolute top-full left-0 right-0 mt-1 bg-[#1E1E23] rounded-lg border border-gray-700 shadow-[0_0_0_1px_rgba(255,255,255,0.08)] z-10 max-h-48 overflow-y-auto">
                       {getAccountsForPlatform(selectedPlatform).map((account, index) => (
                         <button
                           key={index}
@@ -4236,7 +5291,7 @@ export default function CreatePage() {
         const failureReason = postToMove ? getFailureReason(postToMove) : null
         
         return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowRetryConfirm(false) }}>
             <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-7 w-96 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
               <div className="text-center">
                 <h3 className="text-lg font-semibold text-[#F5F5F7] mb-4">Thử lại?</h3>
@@ -4291,7 +5346,7 @@ export default function CreatePage() {
 
       {/* Retry Loading Modal */}
       {showRetryLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowRetryLoading(false) }}>
           <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-8 w-80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             <div className="text-center">
               <div className="mb-4">
@@ -4307,7 +5362,7 @@ export default function CreatePage() {
 
       {/* Retry Result Modal */}
       {showRetryResult && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => { if (e.target === e.currentTarget) setShowRetryResult(false) }}>
           <div className="bg-[#2A2A30] border border-[#3A3A42] rounded-lg p-8 w-80 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
             <div className="text-center">
               <div className="mb-4">

@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -38,7 +40,9 @@
   --sidebar-accent-foreground: oklch(0 0 0); /* Black text on sidebar accent */
   --sidebar-border: oklch(1 0 0); /* White sidebar borders */
   --sidebar-ring: oklch(0.65 0.2 270); /* Violet for sidebar focus */
-  --font-instrument-serif: "Noto Sans Marchen", sans-serif; /* Global font set to Noto Sans Marchen */
+  --font-instrument-serif: "Plus Jakarta Sans", sans-serif; /* Global font set to Plus Jakarta Sans */
+  --font-fira-mono: "Fira Mono", monospace; /* Fira Mono for code and technical elements */
+  --font-plus-jakarta: "Plus Jakarta Sans", sans-serif; /* Plus Jakarta Sans for UI elements */
 }
 
 .dark {
@@ -75,7 +79,9 @@
   --sidebar-accent-foreground: oklch(1 0 0);
   --sidebar-border: oklch(0.3 0 0);
   --sidebar-ring: oklch(0.7 0.25 270);
-  --font-instrument-serif: "Noto Sans Marchen", sans-serif; /* Global font set to Noto Sans Marchen */
+  --font-instrument-serif: "Plus Jakarta Sans", sans-serif; /* Global font set to Plus Jakarta Sans */
+  --font-fira-mono: "Fira Mono", monospace; /* Fira Mono for code and technical elements */
+  --font-plus-jakarta: "Plus Jakarta Sans", sans-serif; /* Plus Jakarta Sans for UI elements */
 }
 
 @theme inline {
@@ -116,15 +122,25 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-instrument-serif: var(--font-instrument-serif);
+  --font-fira-mono: var(--font-fira-mono);
+  --font-plus-jakarta: var(--font-plus-jakarta);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji" !important;
+  }
+  html {
+    font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji" !important;
   }
   body {
     @apply bg-background text-foreground;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji" !important;
+  }
+  /* Apply Plus Jakarta Sans to all text elements */
+  h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, textarea, select, label, li, ul, ol, td, th, tr, table {
+    font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji" !important;
   }
   /* Force any utility-usage of text-white to our brand text color */
   .text-white { color: #F5F5F7 !important; }
@@ -132,4 +148,67 @@
 
 .instrument {
   font-family: var(--font-instrument-serif);
+}
+
+
+/* Font classes */
+.font-fira-mono {
+  font-family: var(--font-fira-mono) !important;
+}
+
+/* Scrollbar utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+}
+
+.font-plus-jakarta {
+  font-family: var(--font-plus-jakarta) !important;
+}
+
+/* Profile name styling for published/failed posts - using Fira Mono */
+.profile-name {
+  font-family: "Fira Mono", monospace !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  color: var(--muted-foreground) !important;
+  margin-bottom: 0.25rem !important;
+}
+
+/* More specific selectors to override any conflicting styles */
+span.profile-name,
+.profile-name.text-xs,
+span.profile-name.text-xs.whitespace-nowrap {
+  font-family: "Fira Mono", monospace !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+}
+
+/* Even more specific - target the exact structure */
+div.flex.flex-col.items-start.text-white\/80.flex-shrink-0.ml-4 span.profile-name {
+  font-family: "Fira Mono", monospace !important;
+  font-weight: 500 !important;
+}
+
+/* ULTRA SPECIFIC - Force Fira Mono on profile names */
+[class*="profile-name"] {
+  font-family: "Fira Mono", monospace !important;
+  font-weight: 500 !important;
+}
+
+/* Nuclear option - target any span with profile-name anywhere */
+span[class*="profile-name"] {
+  font-family: "Fira Mono", monospace !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+}
+
+/* New specific class for Fira Mono profile names */
+.fira-mono-profile {
+  font-family: "Fira Mono", monospace !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
 }
