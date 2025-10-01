@@ -7,7 +7,7 @@
 
 :root {
   /* Updated color tokens to match dramatic lighting design brief */
-  --background: #000000; /* Pure black background */
+  --background: #0C0717; /* Deep purple background */
   --foreground: #F5F5F7; /* Global text color */
   --card: #2A2A30; /* Card background */
   --card-foreground: oklch(0 0 0); /* Black text on light cards */

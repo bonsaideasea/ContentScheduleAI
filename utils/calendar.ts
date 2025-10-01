@@ -73,6 +73,7 @@ export const getCalendarEventsForDay = (
   day: number, 
   calendarEvents: Record<string, CalendarEvent[]>
 ): CalendarEvent[] => {
+  // Use year-month-day as unique key to avoid cross-month collisions (e.g., day 3 in different months)
   const key = `${year}-${month}-${day}`
   return calendarEvents[key] || []
 }

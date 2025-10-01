@@ -56,7 +56,7 @@ interface CreateSectionProps {
  * Create section component with three-panel layout:
  * 1. Left panel (241px) - Sources management
  * 2. Main panel (flex-1) - Post creation editor  
- * 3. Right panel (400px) - AI chatbox
+ * 3. Right panel (350px) - AI chatbox
  */
 export default function CreateSection({
   posts,
@@ -339,6 +339,24 @@ export default function CreateSection({
     return () => window.removeEventListener('ai-create-post', handler as any)
   }, [posts, selectedPostId, onPostSelect, onPostContentChange])
 
+  // Listen for calendar-open-post to create a new active post
+  useEffect(() => {
+    const handler = (e: any) => {
+      const platformRaw = (e.detail?.platform || 'Facebook') as string
+      const platform = platformRaw.charAt(0).toUpperCase() + platformRaw.slice(1)
+      onPostCreate(platform)
+      setTimeout(() => {
+        const latest = [...posts].reverse().find(p => p.type.toLowerCase() === platform.toLowerCase())
+        const id = latest?.id ?? selectedPostId
+        if (id) {
+          onPostSelect(id)
+        }
+      }, 0)
+    }
+    window.addEventListener('calendar-open-post', handler as any)
+    return () => window.removeEventListener('calendar-open-post', handler as any)
+  }, [posts, selectedPostId, onPostCreate, onPostSelect])
+
   // Get current post
   const currentPost = posts.find(p => p.id === selectedPostId)
 
@@ -420,7 +438,7 @@ export default function CreateSection({
       </div>
 
       {/* Main Content Area - Post Editor */}
-      <div className="flex-1 flex ml-4 min-w-0">
+      <div className="flex-1 flex ml-4 mr-4 min-w-0">
         <div className="flex-1 p-6 pt-[30px] h-full overflow-hidden min-w-0">
           <div className="w-full flex flex-col h-full">
             {/* Tabs row */}
@@ -430,10 +448,10 @@ export default function CreateSection({
                 {posts.map((post) => (
                   <div 
                     key={post.id} 
-                    className={`flex items-center gap-2 px-3 py-1 rounded-md border ${
+                    className={`flex items-center gap-2 px-3 py-1 ${
                       selectedPostId === post.id 
-                        ? "border-[#E33265] text-white" 
-                        : "border-white/10 text-gray-300"
+                        ? "border-b-2 border-[#E33265] text-white" 
+                        : "border-b border-white/10 text-gray-300"
                     }`}
                   >
                     <button
@@ -466,7 +484,7 @@ export default function CreateSection({
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className={`${isAddPostActive ? 'bg-[#E33265] text-white hover:bg-[#c52b57]' : ''}`}
+                  className={`${isAddPostActive ? 'bg-[#E33265] text-white hover:bg-[#c52b57]' : 'bg-[#9C5E79]/100 text-white hover:bg-[#9C5E79]/40'}`}
                   onClick={() => {
                     if (showPostPicker) {
                       handlePostPickerMouseLeave()
@@ -622,7 +640,7 @@ export default function CreateSection({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-9 px-4 cursor-pointer bg-black hover:bg-black/80 border-black text-white"
+                            className="h-9 px-4 cursor-pointer bg-black hover:bg-[#E33265]/50 hover:border-[#E33265]/80 border-black text-white"
                           asChild
                         >
                           <span>
@@ -646,14 +664,14 @@ export default function CreateSection({
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="h-9 px-4 border-[#E33265] text-white hover:bg-[#E33265]/10"
+                          className="h-9 px-4 w-16 border-[#E33265] text-white hover:bg-[#E33265]/10"
                           onClick={() => onSaveDraft(selectedPostId)}
                         >
                           Lưu
                         </Button>
                         <Button
                           onClick={handleOpenPublish}
-                          className="bg-[#E33265] hover:bg-[#c52b57] text-white"
+                          className="h-9 px-4 w-16 bg-[#E33265] hover:bg-[#c52b57] text-white"
                         >
                           Đăng
                         </Button>
@@ -666,8 +684,8 @@ export default function CreateSection({
           </div>
         </div>
 
-        {/* Right Panel - AI Chatbox (400px) */}
-        <div className="w-[400px] border-l border-white/10 pt-[25px] px-4 pb-[24px] flex-shrink-0">
+        {/* Right Panel - AI Chatbox (350px) */}
+        <div className="w-[350px] border-l border-white/10 pt-[25px] pl-4 pr-0 pb-[24px] flex-shrink-0">
           <Card className="bg-[#2A2A30] border-[#3A3A42] h-full flex flex-col">
             {/* Model Selector Header */}
             <div className="h-[30px] px-4 border-b border-white/10 flex items-center">
@@ -753,7 +771,7 @@ export default function CreateSection({
                 <button
                   onClick={submitChat}
                   disabled={!chatInput.trim() || isTyping}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-[#E33265] hover:bg-[#E33265]/80 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-[#E33265] hover:bg-[#E33265]/100 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
                 >
                   <SendIcon className="w-4 h-4 text-white" />
                 </button>
@@ -1025,7 +1043,26 @@ export default function CreateSection({
               </Button>
               <Button 
                 className="flex-1 bg-[#E33265] hover:bg-[#c52b57] text-white"
-                onClick={() => { setShowPublishModal(false); onPublish(selectedPostId) }}
+                onClick={() => { 
+                  if (publishTime === 'pick a time') {
+                    // Dispatch schedule event for calendar (yellow note)
+                    const detail = {
+                      platform: selectedPlatform || (currentPost?.type || ''),
+                      date: selectedDate?.toISOString?.() || new Date().toISOString(),
+                      time: selectedTime, // e.g., "07:30 PM"
+                      content: postContents[selectedPostId] ?? ''
+                    }
+                    try { window.dispatchEvent(new CustomEvent('schedule-post', { detail })) } catch {}
+                    setShowPublishModal(false)
+                    // Close the active tab to avoid confusion after scheduling
+                    try { onPostDelete(selectedPostId) } catch {}
+                  } else {
+                    setShowPublishModal(false); 
+                    onPublish(selectedPostId)
+                    // Close the active tab after instant publish
+                    try { onPostDelete(selectedPostId) } catch {}
+                  }
+                }}
               >
                 Đăng
               </Button>
