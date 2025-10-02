@@ -357,6 +357,19 @@ export default function CreateSection({
     return () => window.removeEventListener('calendar-open-post', handler as any)
   }, [posts, selectedPostId, onPostCreate, onPostSelect])
 
+  // Close model menu when clicking outside
+  useEffect(() => {
+    if (!showModelMenu) return
+    const onDocClick = (e: MouseEvent) => {
+      const node = modelMenuRef.current
+      if (node && !node.contains(e.target as Node)) {
+        setShowModelMenu(false)
+      }
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [showModelMenu])
+
   // Get current post
   const currentPost = posts.find(p => p.id === selectedPostId)
 
@@ -371,7 +384,7 @@ export default function CreateSection({
             className="text-s text-gray-200 hover:text-white border-transparent hover:border-[#E33265] hover:border-[1.5px] hover:bg-transparent px-2 py-1"
             onClick={() => setShowSourceModal(true)}
           >
-            Thêm nguồn +
+            Thêm nguồn &nbsp;&nbsp;+
           </Button>
         </div>
 
