@@ -630,9 +630,9 @@ export default function CreateSection({
                   
                   {/* Action bar - sticky with divider and character count */}
                  {/* Sticky action bar with symmetric vertical spacing for buttons (15px top & bottom) */}
-                 <div className="sticky bottom-0 left-0 right-0 bg-[#2A2A30]">
+                 <div className="sticky bottom-0 left-0 right-0 bg-[#44424D]">
                    {/* Use 15px top padding for buttons and 0 bottom to tighten bottom spacing */}
-                    <div className="relative border-t border-white/10 pt-[15px] pb-0 flex items-center justify-between">
+                    <div className="relative border-t border-white/10 pt-[15px] pb-0 flex items-center justify-between opacity-100">
                       {/* Character count aligned to the right, above line */}
                       {/* Place count above divider with a 15px gap below it. Approx height ~16px => offset 16 + 15 = 31px */}
                       <div className="absolute -top-[31px] right-0 text-xs text-gray-400 pr-[10px]">
@@ -705,7 +705,7 @@ export default function CreateSection({
         <div className="w-[350px] border-l border-white/10 flex-shrink-0 p-[15px]">
           <Card className="bg-[#2A2A30] border-[#3A3A42] h-full flex flex-col p-0 gap-0 rounded-[5px]">
             {/* Model Selector Header */}
-            <div className="h-[50px] border-b border-white/10 flex items-center pt-4 pl-2">
+            <div className="h-[50px] border-b border-white/10 flex items-center pt-4 pl-2 bg-[#44424D]">
               <div className="relative -mt-[15px]" ref={modelMenuRef}>
                 <button
                   type="button"
@@ -738,7 +738,7 @@ export default function CreateSection({
             </div>
 
             {/* Chat Messages */}
-            <div ref={chatScrollRef} className="h-[calc(100%-130px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+            <div ref={chatScrollRef} className="h-[calc(100%-130px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 opacity-80">
               <div className="space-y-4 min-h-0">
                 {chatMessages.map((message, index) => (
                   <div key={index} className={`text-sm ${message.role === "user" ? "text-right" : "text-left"}`}>
@@ -1052,7 +1052,7 @@ export default function CreateSection({
                 Hủy
               </Button>
               <Button 
-                className="flex-1 bg-[#E33265] hover:bg-[#c52b57] text-white"
+                className="flex-1 bg-[#E33265] hover:bg-[#c52b57] text-white opacity-50"
                 onClick={() => { 
                   if (publishTime === 'pick a time') {
                     // Dispatch schedule event for calendar (yellow note)

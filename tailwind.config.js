@@ -8,12 +8,13 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'sans': ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji'],
+        'sans': ['Figtree', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'Apple Color Emoji', 'Segoe UI Emoji'],
       },
     },
   },
   plugins: [],
 }
+
 
 
 
