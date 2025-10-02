@@ -29,7 +29,7 @@ export default function MainContent({ activeSection, children }: MainContentProp
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden">
-      <div className="h-full w-full pr-[30px]">
+      <div className="h-full w-full">
         {children}
       </div>
     </div>

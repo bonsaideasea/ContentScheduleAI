@@ -367,11 +367,11 @@ export default function CreateSection({
         <div className="flex items-center justify-between mb-2">
           <Button
             size="sm"
-            variant="ghost"
-            className="text-xs text-gray-200 hover:text-white px-2 py-1"
+            variant="outline"
+            className="text-s text-gray-200 hover:text-white border-transparent hover:border-[#E33265] hover:border-[1.5px] hover:bg-transparent px-2 py-1"
             onClick={() => setShowSourceModal(true)}
           >
-            + Thêm nguồn
+            Thêm nguồn +
           </Button>
         </div>
 
@@ -438,8 +438,9 @@ export default function CreateSection({
       </div>
 
       {/* Main Content Area - Post Editor */}
-      <div className="flex-1 flex ml-4 mr-4 min-w-0">
-        <div className="flex-1 p-6 pt-[30px] h-full overflow-hidden min-w-0">
+      {/* Remove outer margins/paddings to align content edge-to-edge */}
+      <div className="flex-1 flex min-w-0">
+        <div className="flex-1 h-full overflow-hidden min-w-0 p-[15px]">
           <div className="w-full flex flex-col h-full">
             {/* Tabs row */}
             <div className="flex items-center gap-3 mb-4">
@@ -533,7 +534,7 @@ export default function CreateSection({
             </div>
 
             {/* Editor */}
-            <Card className="bg-[#2A2A30] border-[#3A3A42] p-6 flex-1 flex flex-col w-full">
+            <Card className="bg-[#2A2A30] border-[#3A3A42] p-0 gap-0 rounded-[5px] flex-1 flex flex-col w-full">
               {selectedPostId === 0 || posts.length === 0 ? (
                 /* Empty state */
                 <div className="flex-1 flex items-center justify-center">
@@ -615,10 +616,13 @@ export default function CreateSection({
                   )}
                   
                   {/* Action bar - sticky with divider and character count */}
-                  <div className="sticky bottom-0 left-0 right-0 bg-[#2A2A30] pt-3 mt-4">
-                    <div className="relative border-t border-white/10 pt-3 flex items-center justify-between">
+                 {/* Sticky action bar with symmetric vertical spacing for buttons (15px top & bottom) */}
+                 <div className="sticky bottom-0 left-0 right-0 bg-[#2A2A30]">
+                   {/* Use 15px top padding for buttons and 0 bottom to tighten bottom spacing */}
+                    <div className="relative border-t border-white/10 pt-[15px] pb-0 flex items-center justify-between">
                       {/* Character count aligned to the right, above line */}
-                      <div className="absolute -top-[22px] right-0 text-xs text-gray-400 mb-[10px]">
+                      {/* Place count above divider with a 15px gap below it. Approx height ~16px => offset 16 + 15 = 31px */}
+                      <div className="absolute -top-[31px] right-0 text-xs text-gray-400 pr-[10px]">
                         {(postContents[selectedPostId] ?? "").length}/
                         {(() => {
                           const platform = currentPost?.type || 'default'
@@ -627,7 +631,7 @@ export default function CreateSection({
                         })()} ký tự
                       </div>
                       {/* Left: Only Add Image button stays */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 pl-[10px] pb-[10px]">
                       <input
                         type="file"
                         accept="image/*,video/*"
@@ -652,7 +656,7 @@ export default function CreateSection({
                       </div>
 
                       {/* Right: Clone, Save, Publish */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 pr-[10px] pb-[15px]">
                         <Button 
                           size="sm" 
                           variant="outline" 
@@ -685,10 +689,10 @@ export default function CreateSection({
         </div>
 
         {/* Right Panel - AI Chatbox (350px) */}
-        <div className="w-[350px] border-l border-white/10 pt-[25px] pl-4 pr-0 pb-[24px] flex-shrink-0">
-          <Card className="bg-[#2A2A30] border-[#3A3A42] h-full flex flex-col">
+        <div className="w-[350px] border-l border-white/10 flex-shrink-0 p-[15px]">
+          <Card className="bg-[#2A2A30] border-[#3A3A42] h-full flex flex-col p-0 gap-0 rounded-[5px]">
             {/* Model Selector Header */}
-            <div className="h-[30px] px-4 border-b border-white/10 flex items-center">
+            <div className="h-[50px] border-b border-white/10 flex items-center pt-4 pl-2">
               <div className="relative -mt-[15px]" ref={modelMenuRef}>
                 <button
                   type="button"
@@ -721,7 +725,7 @@ export default function CreateSection({
             </div>
 
             {/* Chat Messages */}
-            <div ref={chatScrollRef} className="h-[calc(100%-130px)] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+            <div ref={chatScrollRef} className="h-[calc(100%-130px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
               <div className="space-y-4 min-h-0">
                 {chatMessages.map((message, index) => (
                   <div key={index} className={`text-sm ${message.role === "user" ? "text-right" : "text-left"}`}>
@@ -754,11 +758,11 @@ export default function CreateSection({
             </div>
 
             {/* Chat Input */}
-            <div className="border-t border-white/10 relative pt-[5px] pl-[9px] pr-[5px] h-[120px]">
+            <div className="border-t border-white/10 relative h-[120px]">
               <div className="relative h-full">
                 <textarea
                   placeholder="Tôi là trợ lý viết mới của bạn. Bạn muốn viết về điều gì?"
-                  className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] rounded-md outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A30] resize-none text-[#F5F5F7] placeholder-gray-400 text-sm p-[10px] pr-12"
+                  className="w-full h-full bg-[#2A2A30] border border-[#2A2A30] rounded-md outline-none focus:outline-none focus:ring-0 focus:border-[#2A2A30] resize-none text-[#F5F5F7] placeholder-gray-400 text-sm p-[10px]"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -768,13 +772,6 @@ export default function CreateSection({
                     }
                   }}
                 />
-                <button
-                  onClick={submitChat}
-                  disabled={!chatInput.trim() || isTyping}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-[#E33265] hover:bg-[#E33265]/100 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center transition-colors"
-                >
-                  <SendIcon className="w-4 h-4 text-white" />
-                </button>
               </div>
             </div>
           </Card>

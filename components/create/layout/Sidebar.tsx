@@ -118,8 +118,10 @@ export default function Sidebar({
                 <Button
                   key={item.id}
                   variant={activeSection === item.id ? "secondary" : "ghost"}
-                  className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] ${
-                    activeSection === item.id ? "bg-[#9C5E79]/80 border-[#9C5E79]/80" : ""
+                  className={`w-full ${isSidebarOpen ? 'justify-start' : 'justify-center'} text-[#F5F5F7] border ${
+                    activeSection === item.id
+                      ? "bg-[#9C5E79]/80 border-[#9C5E79]/80"
+                      : "border-transparent hover:bg-transparent hover:border-[#9C5E79]/80 hover:border-[1.5px] focus:bg-transparent"
                   }`}
                   onClick={() => { 
                     onSectionChange(item.id)
