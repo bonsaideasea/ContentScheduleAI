@@ -27,7 +27,7 @@ export default function CreateLayout({
   onLanguageChange
 }: CreateLayoutProps) {
   return (
-    <div className="h-screen bg-[#1E1E23] text-white">
+    <div className="h-screen bg-[#0C0717] text-white">
       <div className="relative flex h-screen">
         {/* Sidebar spacer keeps content fixed; actual sidebar overlays within */}
         <div className="relative flex-none w-[79px] h-full">

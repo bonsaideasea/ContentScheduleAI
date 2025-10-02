@@ -3,193 +3,174 @@
 import Header from "@/components/header"
 import ShaderBackground from "@/components/shader-background"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, DollarSign, TrendingUp, Gift } from "lucide-react"
-import Link from "next/link"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { useState } from "react"
 
-export default function AffiliatePage() {
+export default function ContactPage() {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    message: ""
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Handle form submission here
+    console.log("Form submitted:", formData)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }))
+  }
+
   return (
     <ShaderBackground>
       <Header />
 
       <div className="relative z-10 min-h-screen pt-20">
         <div className="container mx-auto px-6">
-          {/* Hero Section */}
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-black/20 text-white border-white/20">Affiliate Program</Badge>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
-              Earn with{" "}
-              <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
-                MarketAI
-              </span>
-            </h1>
-            <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Join our affiliate program and earn up to 40% commission for every customer you refer. Help marketers
-              discover the power of AI automation.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-white text-black hover:bg-white/90 font-medium">
-                Join Program
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              >
-                Learn More
-              </Button>
+          {/* Main Content */}
+          <div className="max-w-6xl mx-auto">
+            {/* Title and Introduction */}
+            <div className="mb-16">
+              <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight font-serif">
+                Contact Us
+              </h1>
+              <p className="text-xl text-white/80 max-w-2xl leading-relaxed">
+                Please feel free to contact us and we will get back to you as soon as we can.
+              </p>
             </div>
-          </div>
 
-          {/* Commission Structure */}
-          <div className="grid md:grid-cols-3 gap-6 mb-16">
-            <Card className="bg-black/20 border-white/10 text-white">
-              <CardHeader className="text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="text-2xl">30% Commission</CardTitle>
-                <CardDescription className="text-white/60">First 3 months</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-white/80">Earn 30% on all new customer subscriptions for their first quarter</p>
-              </CardContent>
-            </Card>
+            {/* Two Column Layout */}
+            <div className="grid md:grid-cols-2 gap-16">
+              {/* Left Column - Contact Form */}
+              <div>
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  {/* Name Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-white text-sm font-medium">
+                      Name
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className="bg-transparent border-0 border-b border-white/30 rounded-none px-0 py-3 text-white placeholder-white/50 focus:border-white/60 focus:ring-0 focus:outline-none"
+                        placeholder=""
+                        required
+                      />
+                    </div>
+                  </div>
 
-            <Card className="bg-black/20 border-white/10 text-white">
-              <CardHeader className="text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="text-2xl">40% Commission</CardTitle>
-                <CardDescription className="text-white/60">Top performers</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-white/80">Unlock higher rates when you refer 10+ customers per month</p>
-              </CardContent>
-            </Card>
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white text-sm font-medium">
+                      Email
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="bg-transparent border-0 border-b border-white/30 rounded-none px-0 py-3 text-white placeholder-white/50 focus:border-white/60 focus:ring-0 focus:outline-none"
+                        placeholder=""
+                        required
+                      />
+                    </div>
+                  </div>
 
-            <Card className="bg-black/20 border-white/10 text-white">
-              <CardHeader className="text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Gift className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="text-2xl">Bonus Rewards</CardTitle>
-                <CardDescription className="text-white/60">Extra incentives</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-white/80">Monthly bonuses, exclusive swag, and early access to new features</p>
-              </CardContent>
-            </Card>
-          </div>
+                  {/* Message Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="message" className="text-white text-sm font-medium">
+                      Message
+                    </Label>
+                    <div className="relative">
+                      <Textarea
+                        id="message"
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        className="bg-transparent border-0 border-b border-white/30 rounded-none px-0 py-3 text-white placeholder-white/50 focus:border-white/60 focus:ring-0 focus:outline-none resize-none min-h-[120px]"
+                        placeholder=""
+                        required
+                      />
+                    </div>
+                  </div>
 
-          {/* Benefits */}
-          <div className="mb-16">
-            <h2 className="text-3xl font-bold text-white text-center mb-12">Why Join Our Program?</h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">High Converting Product</h3>
-                    <p className="text-white/70">
-                      MarketAI has a proven track record with 15% conversion rates and low churn
-                    </p>
+                  {/* Send Button */}
+                  <div className="pt-4">
+                    <Button
+                      type="submit"
+                      className="bg-gray-600 hover:bg-gray-500 text-white px-8 py-3 rounded-none font-medium"
+                    >
+                      Send
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column - Contact Information */}
+              <div className="space-y-12">
+                {/* Visit Us */}
+                <div>
+                  <h3 className="text-white text-lg font-medium mb-4">Visit us</h3>
+                  <div className="space-y-1 text-white/80">
+                    <p>263 Homebush Road</p>
+                    <p>Strathfield South 2136</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Marketing Materials</h3>
-                    <p className="text-white/70">
-                      Access to banners, email templates, social media assets, and landing pages
-                    </p>
+
+                {/* Talk to Us */}
+                <div>
+                  <h3 className="text-white text-lg font-medium mb-4">Talk to us</h3>
+                  <div className="space-y-1 text-white/80">
+                    <p>+61 421 307 998</p>
+                    <p>helen@helenarvan.com</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Real-time Analytics</h3>
-                    <p className="text-white/70">
-                      Track clicks, conversions, and earnings with our comprehensive dashboard
-                    </p>
-                  </div>
+
+                {/* Social Media Icons */}
+                <div className="flex items-center space-x-6">
+                  {/* Twitter */}
+                  <button className="text-white hover:text-white/70 transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                    </svg>
+                  </button>
+
+                  {/* LinkedIn */}
+                  <button className="text-white hover:text-white/70 transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                  </button>
+
+                  {/* Instagram */}
+                  <button className="text-white hover:text-white/70 transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987s11.987-5.367 11.987-11.987C24.014 5.367 18.647.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.297-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.807.875 1.297 2.026 1.297 3.323s-.49 2.448-1.297 3.323c-.875.807-2.026 1.297-3.323 1.297zm7.718-1.297c-.875.807-2.026 1.297-3.323 1.297s-2.448-.49-3.323-1.297c-.807-.875-1.297-2.026-1.297-3.323s.49-2.448 1.297-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.807.875 1.297 2.026 1.297 3.323s-.49 2.448-1.297 3.323z"/>
+                    </svg>
+                  </button>
+
+                  {/* Globe/Website */}
+                  <button className="text-white hover:text-white/70 transition-colors">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Dedicated Support</h3>
-                    <p className="text-white/70">
-                      Personal affiliate manager and priority support for all your questions
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">Monthly Payouts</h3>
-                    <p className="text-white/70">Reliable payments via PayPal, Stripe, or bank transfer every month</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 mt-1 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">No Minimum Threshold</h3>
-                    <p className="text-white/70">Get paid from your first referral - no waiting for minimum amounts</p>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">500+</div>
-              <div className="text-white/60">Active Affiliates</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">$2M+</div>
-              <div className="text-white/60">Paid Out</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">15%</div>
-              <div className="text-white/60">Avg Conversion</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">$180</div>
-              <div className="text-white/60">Avg Commission</div>
-            </div>
-          </div>
-
-          {/* CTA Section */}
-          <div className="text-center mb-16">
-            <Card className="bg-gradient-to-r from-violet-500/20 to-purple-500/20 border-white/20 max-w-2xl mx-auto">
-              <CardHeader>
-                <CardTitle className="text-2xl text-white">Ready to Start Earning?</CardTitle>
-                <CardDescription className="text-white/70">
-                  Join thousands of affiliates already earning with MarketAI
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button size="lg" className="bg-white text-black hover:bg-white/90 font-medium">
-                  Apply Now - It's Free
-                </Button>
-                <Link href="/affiliate/dashboard">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-                  >
-                    View Dashboard
-                  </Button>
-                </Link>
-                <p className="text-sm text-white/60 mt-4">Application review typically takes 24-48 hours</p>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

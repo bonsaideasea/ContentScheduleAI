@@ -138,13 +138,41 @@ export function useCreatePage() {
   const postPickerRef = useRef<HTMLDivElement>(null)
   const clonePickerRef = useRef<HTMLDivElement>(null)
   
-  // Initialize active section from URL
+  // Initialize active section from URL and open platform if provided
   useEffect(() => {
     const section = searchParams.get("section")
     if (section) {
       setActiveSection(section)
     }
+    const platform = searchParams.get('platform')
+    if (platform && section === 'create') {
+      const pretty = platform.charAt(0).toUpperCase() + platform.slice(1)
+      const newId = Date.now()
+      setOpenPosts(prev => [...prev, { id: newId, type: pretty }])
+      setPostContents(prev => ({ ...prev, [newId]: '' }))
+      setSelectedPostId(newId)
+    }
   }, [searchParams])
+
+  // If a draftId is present in URL, open it in the editor exactly once
+  useEffect(() => {
+    const draftIdParam = searchParams.get('draftId')
+    if (!draftIdParam) return
+    const draftId = Number(draftIdParam)
+    const draft = draftPosts.find(d => d.id === draftId)
+    if (!draft) return
+
+    // Switch to create and open a tab with the draft content
+    setActiveSection('create')
+    const existing = openPosts.find(p => p.type === draft.platform)
+    let targetId = existing?.id
+    if (!targetId) {
+      targetId = Date.now()
+      setOpenPosts(prev => [...prev, { id: targetId!, type: draft.platform }])
+    }
+    setPostContents(prev => ({ ...prev, [targetId!]: draft.content }))
+    setSelectedPostId(targetId!)
+  }, [searchParams, draftPosts])
   
   // Load data from localStorage on mount
   useEffect(() => {
@@ -169,16 +197,97 @@ export function useCreatePage() {
       setCalendarEvents(savedCalendarEvents)
     }
     
-    // Load draft posts
+    // Load draft posts; if none, seed curated VN drafts for demonstration
     const savedDraftPosts = loadFromLocalStorage('draftPosts', [])
-    if (savedDraftPosts.length > 0) {
-      setDraftPosts(savedDraftPosts)
+    if ((savedDraftPosts || []).length > 0) {
+      const cleanedDrafts = (savedDraftPosts as any[]).filter(d => (d?.content || '').toString().trim().length > 0)
+      setDraftPosts(cleanedDrafts)
+      if (cleanedDrafts.length !== (savedDraftPosts as any[]).length) {
+        saveToLocalStorage('draftPosts', cleanedDrafts)
+      }
+    } else {
+      // Generate 30 long-form Vietnamese drafts across platforms between June and September
+      const platforms = ['Twitter','Instagram','LinkedIn','Facebook','Threads','Bluesky','YouTube','TikTok','Pinterest'] as const
+      const year = new Date().getFullYear()
+      const start = new Date(year, 5, 1) // June 1 (0-based month)
+      const end = new Date(year, 8, 30) // Sept 30
+      const between = (idx: number, total: number) => {
+        const t = start.getTime() + ((end.getTime() - start.getTime()) * idx) / Math.max(total - 1, 1)
+        return new Date(t)
+      }
+      const baseThoughts = [
+        'Ghi chú nhanh cho chiến lược nội dung tuần này',
+        'Ý tưởng triển khai chuỗi bài viết nhiều phần',
+        'Tối ưu tông giọng cho nhóm khán giả mới',
+        'Tái sử dụng nội dung để tăng hiệu suất',
+        'Thử nghiệm A/B cho câu mở đầu thu hút',
+        'Danh sách hashtag phù hợp theo chủ đề',
+        'Kế hoạch trả lời bình luận để tăng tương tác',
+        'Cách kể chuyện ngắn gọn mà vẫn truyền cảm',
+        'Gợi ý CTA tự nhiên, không gây khó chịu',
+        'Lịch đăng thử nghiệm theo múi giờ'
+      ]
+      const extraChunks = [
+        'Mỗi đoạn nên tập trung một ý chính, rõ ràng, dễ hành động.',
+        'Thêm ví dụ thực tế để người đọc dễ hình dung và áp dụng.',
+        'Giữ câu ngắn nhưng không cụt, ưu tiên mạch logic tự nhiên.',
+        'Tổng hợp phản hồi để cải thiện bài viết kế tiếp.',
+        'Nhấn mạnh lợi ích, giảm mô tả tính năng khô khan.',
+        'Kèm đường dẫn tài nguyên học thêm khi phù hợp.',
+        'Hình ảnh nên nhất quán về màu sắc và bố cục.',
+        'Theo dõi số liệu sau 24–48 giờ để rút kinh nghiệm.',
+        'Đặt câu hỏi gợi mở để khuyến khích thảo luận.',
+        'Tránh thuật ngữ quá hàn lâm khi không thật cần thiết.'
+      ]
+      const makeLong = (seed: string, i: number) => {
+        let out = seed
+        let k = 0
+        const words = () => out.split(/\s+/).filter(Boolean).length
+        while (words() < 65) {
+          out += ' ' + extraChunks[(i + k) % extraChunks.length]
+          k++
+        }
+        return out
+      }
+      const drafts = Array.from({ length: 30 }).map((_, i) => {
+        const plat = platforms[i % platforms.length]
+        const when = between(i, 30)
+        const yyyy = when.getFullYear()
+        const mm = String(when.getMonth() + 1).padStart(2, '0')
+        const dd = String(when.getDate()).padStart(2, '0')
+        const seed = `${baseThoughts[i % baseThoughts.length]}: triển khai cho ${plat} với nội dung có chiều sâu, tập trung giá trị thực tế và ví dụ minh họa.`
+        return {
+          id: Date.now() + 1000 + i,
+          platform: plat,
+          platformIcon: plat,
+          content: makeLong(seed, i),
+          time: `${yyyy}-${mm}-${dd}`,
+          status: 'draft'
+        }
+      }) as any
+      setDraftPosts(drafts)
+      saveToLocalStorage('draftPosts', drafts)
     }
     
     // Load published posts
     const savedPublishedPosts = loadFromLocalStorage('publishedPosts', [])
     if (savedPublishedPosts.length > 0) {
-      setPublishedPosts(savedPublishedPosts)
+      // Sanitize invalid/missing dates to valid ISO strings
+      const year = new Date().getFullYear()
+      const rngStart = new Date(year, 5, 1).getTime()
+      const rngEnd = new Date(year, 8, 30, 23, 59).getTime()
+      const safeISO = (t: any, idx: number) => {
+        const d = new Date(t)
+        if (!isNaN(d.getTime())) return d.toISOString()
+        const r = rngStart + Math.floor(((rngEnd - rngStart) * (idx + 1)) / (savedPublishedPosts.length + 1))
+        return new Date(r).toISOString()
+      }
+      const sanitized = savedPublishedPosts.map((p: any, i: number) => ({
+        ...p,
+        time: safeISO(p?.time, i)
+      }))
+      setPublishedPosts(sanitized)
+      saveToLocalStorage('publishedPosts', sanitized)
     }
     
     // Load failed posts
@@ -257,15 +366,51 @@ export function useCreatePage() {
     }
 
     if (needSeedPublished) {
-      const start = new Date(new Date().getFullYear(), 5, 1) // tháng 6 (0-based)
-      const end = new Date()
+      const year = new Date().getFullYear()
+      const start = new Date(year, 5, 1) // June 1
+      const end = new Date(year, 8, 30) // Sept 30
+      const baseThoughts = [
+        'Ghi chú nhanh cho chiến lược nội dung tuần này',
+        'Ý tưởng triển khai chuỗi bài viết nhiều phần',
+        'Tối ưu tông giọng cho nhóm khán giả mới',
+        'Tái sử dụng nội dung để tăng hiệu suất',
+        'Thử nghiệm A/B cho câu mở đầu thu hút',
+        'Danh sách hashtag phù hợp theo chủ đề',
+        'Kế hoạch trả lời bình luận để tăng tương tác',
+        'Cách kể chuyện ngắn gọn mà vẫn truyền cảm',
+        'Gợi ý CTA tự nhiên, không gây khó chịu',
+        'Lịch đăng thử nghiệm theo múi giờ'
+      ]
+      const extraChunks = [
+        'Mỗi đoạn nên tập trung một ý chính, rõ ràng, dễ hành động.',
+        'Thêm ví dụ thực tế để người đọc dễ hình dung và áp dụng.',
+        'Giữ câu ngắn nhưng không cụt, ưu tiên mạch logic tự nhiên.',
+        'Tổng hợp phản hồi để cải thiện bài viết kế tiếp.',
+        'Nhấn mạnh lợi ích, giảm mô tả tính năng khô khan.',
+        'Kèm đường dẫn tài nguyên học thêm khi phù hợp.',
+        'Hình ảnh nên nhất quán về màu sắc và bố cục.',
+        'Theo dõi số liệu sau 24–48 giờ để rút kinh nghiệm.',
+        'Đặt câu hỏi gợi mở để khuyến khích thảo luận.',
+        'Tránh thuật ngữ quá hàn lâm khi không thật cần thiết.'
+      ]
+      const makeLong = (seed: string, i: number) => {
+        let out = seed
+        let k = 0
+        const words = () => out.split(/\s+/).filter(Boolean).length
+        while (words() < 65) {
+          out += ' ' + extraChunks[(i + k) % extraChunks.length]
+          k++
+        }
+        return out
+      }
       const mockPublished = Array.from({ length: 30 }).map((_, i) => {
         const platform = randomPlatform()
         const when = generateDateBetween(start, end, i, 30)
+        const seed = `${baseThoughts[i % baseThoughts.length]}: triển khai cho ${platform} với ví dụ cụ thể và giá trị áp dụng ngay.`
         return {
           id: Date.now() + i,
           platform,
-          content: randomContent(platform, i),
+          content: makeLong(seed, i),
           time: formatViDate(when),
           status: 'published',
           url: `https://${platform.toLowerCase()}.com/bai-viet/${Date.now() + i}`,
@@ -280,27 +425,7 @@ export function useCreatePage() {
       saveToLocalStorage('publishedPosts', mockPublished)
     }
 
-    if (needSeedDrafts) {
-      const end = new Date()
-      const start = new Date(end.getFullYear(), end.getMonth() - 2, 1)
-      const mockDrafts = Array.from({ length: 20 }).map((_, i) => {
-        const platform = randomPlatform()
-        const when = generateDateBetween(start, end, i, 20)
-        const yyyy = when.getFullYear()
-        const mm = pad(when.getMonth() + 1)
-        const dd = pad(when.getDate())
-        return {
-          id: Date.now() + 1000 + i,
-          platform,
-          platformIcon: platform,
-          content: `Bản nháp ${i + 1} cho ${platform}: ghi ý tưởng nhanh để hoàn thiện sau.`,
-          time: `${yyyy}-${mm}-${dd}`,
-          status: 'draft'
-        }
-      })
-      setDraftPosts(mockDrafts as any)
-      saveToLocalStorage('draftPosts', mockDrafts)
-    }
+    // Do not seed drafts; keep empty until user saves
 
     if (needSeedFailed) {
       const end = new Date()
@@ -459,7 +584,7 @@ export function useCreatePage() {
         id: postId,
         platform: post.type,
         content: postContents[postId] || "",
-        time: new Date().toLocaleString('vi-VN'),
+        time: new Date().toISOString(),
         status: 'published',
         url: `https://${post.type.toLowerCase()}.com/post/${postId}`,
         engagement: {
@@ -471,14 +596,51 @@ export function useCreatePage() {
       setPublishedPosts(prev => [...prev, publishedPost])
       saveToLocalStorage('publishedPosts', [...publishedPosts, publishedPost])
       
+      // Record a green calendar note for "Bây giờ"
+      try {
+        const now = new Date()
+        const y = now.getFullYear()
+        const m = now.getMonth()
+        const d = now.getDate()
+        const pad = (n: number) => (n < 10 ? `0${n}` : String(n))
+        const time24 = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+        const key = `${y}-${m}-${d}`
+        const newEvent = {
+          platform: post.type,
+          time: time24,
+          status: 'posted',
+          noteType: 'green' as const,
+          url: `https://${post.type.toLowerCase()}.com/post/${postId}`
+        }
+        const updated = {
+          ...calendarEvents,
+          [key]: [...(calendarEvents[key] || []), newEvent]
+        }
+        setCalendarEvents(updated)
+        saveToLocalStorage('calendarEvents', updated)
+      } catch {}
+
       // Remove from open posts
       handlePostDelete(postId)
     }
   }
   
   const handleEditDraft = (post: any) => {
-    // Implementation for editing draft
-    console.log('Edit draft:', post)
+    try {
+      setActiveSection('create')
+      try { window.history.pushState(null, '', `/create?section=create&draftId=${post.id}`) } catch {}
+      const existing = openPosts.find(p => p.type === post.platform)
+      let targetId = existing?.id
+      if (!targetId) {
+        targetId = Date.now()
+        setOpenPosts(prev => [...prev, { id: targetId!, type: post.platform }])
+      }
+      setPostContents(prev => ({ ...prev, [targetId!]: post.content || '' }))
+      setSelectedPostId(targetId!)
+      saveToLocalStorage('postContents', { ...postContents, [targetId!]: post.content || '' })
+    } catch (e) {
+      console.error('Failed opening draft in editor', e)
+    }
   }
   
   const handleDeleteDraft = (id: number) => {
@@ -586,8 +748,8 @@ export function useCreatePage() {
     const key = `${year}-${month}-${day}`
     const newEvent = {
       platform,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      status: 'scheduled',
+      time: '',
+      status: 'Trống',
       noteType: 'yellow' as const
     }
     setCalendarEvents(prev => ({
@@ -618,6 +780,88 @@ export function useCreatePage() {
     console.log('Create new key')
   }
   
+  // Listen for scheduled posts from publish modal and create yellow notes with time
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { platform, date, time, content } = e.detail || {}
+      try {
+        const d = date ? new Date(date) : new Date()
+        const [hStr, rest] = String(time || '').split(':')
+        let hour = parseInt(hStr || '0', 10)
+        let minute = parseInt((rest || '0').slice(0,2) || '0', 10)
+        const ampm = (time || '').toUpperCase().includes('PM')
+        if (ampm && hour < 12) hour += 12
+        if (!ampm && hour === 12) hour = 0
+        const pad = (n: number) => (n < 10 ? `0${n}` : String(n))
+        const time24 = `${pad(hour)}:${pad(minute)}`
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+        const newEvent: any = { platform: platform || 'Facebook', time: time24, status: `scheduled ${time}`, noteType: 'yellow' as const, content: content || '' }
+        const updated = { ...calendarEvents, [key]: [...(calendarEvents[key] || []), newEvent] }
+        setCalendarEvents(updated)
+        saveToLocalStorage('calendarEvents', updated)
+
+        // Schedule auto-transition at the scheduled time
+        const now = new Date()
+        const runAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute, 0, 0)
+        const delay = Math.max(0, runAt.getTime() - now.getTime())
+        setTimeout(() => {
+          // 70% chance success for mock; adjust as needed
+          const isSuccess = Math.random() > 0.3
+        const evtKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+          const events = (calendarEvents[evtKey] || []) as any[]
+          // Find the first matching scheduled event by platform/time
+          const idx = events.findIndex(ev => ev.platform === newEvent.platform && ev.time === newEvent.time && ev.noteType === 'yellow')
+          if (idx >= 0) {
+            const copy = [...events]
+            if (isSuccess) {
+              // Turn to green and add to publishedPosts
+              const green = { ...copy[idx], noteType: 'green' as const, status: 'posted', url: `https://${(newEvent.platform || '').toLowerCase()}.com/post/${Date.now()}` }
+              copy[idx] = green
+              const calUpdated = { ...calendarEvents, [evtKey]: copy }
+              setCalendarEvents(calUpdated)
+              saveToLocalStorage('calendarEvents', calUpdated)
+
+              const publishedPost = {
+                id: Date.now(),
+                platform: newEvent.platform,
+                content: newEvent.content || '',
+                time: new Date(runAt).toISOString(),
+                status: 'published' as const,
+                url: green.url,
+                engagement: { likes: 0, comments: 0, shares: 0 }
+              } as any
+              const next = [...publishedPosts, publishedPost]
+              setPublishedPosts(next)
+              saveToLocalStorage('publishedPosts', next)
+            } else {
+              // Turn to red and add to failedPosts
+              const red = { ...copy[idx], noteType: 'red' as const, status: 'failed' }
+              copy[idx] = red
+              const calUpdated = { ...calendarEvents, [evtKey]: copy }
+              setCalendarEvents(calUpdated)
+              saveToLocalStorage('calendarEvents', calUpdated)
+
+              const failed = {
+                id: Date.now(),
+                platform: newEvent.platform,
+                content: newEvent.content || '',
+                date: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,
+                time: `${pad(hour)}:${pad(minute)}`,
+                error: 'Tự động đăng thất bại',
+                url: `https://${(newEvent.platform || '').toLowerCase()}.com/post/${Date.now()}`
+              } as any
+              const next = [...failedPosts, failed]
+              setFailedPosts(next)
+              saveToLocalStorage('failedPosts', next)
+            }
+          }
+        }, delay)
+      } catch {}
+    }
+    window.addEventListener('schedule-post', handler as any)
+    return () => window.removeEventListener('schedule-post', handler as any)
+  }, [calendarEvents])
+
   
   return {
     // State

@@ -75,29 +75,27 @@ export default function DraftsSection({
     return filtered
   }
 
-  // Get platform icon
+  // Get platform icon (case-insensitive, supports platform or platformIcon fields)
   const getPlatformIcon = (post: DraftPost) => {
-    if (post.platformIcon) {
-      return post.platformIcon
-    }
-    
     const iconMap: Record<string, string> = {
-      'Twitter': '/x.png',
-      'Instagram': '/instagram.png',
-      'LinkedIn': '/link.svg',
-      'Facebook': '/fb.svg',
-      'Threads': '/threads.png',
-      'Bluesky': '/bluesky.png',
-      'YouTube': '/ytube.png',
-      'TikTok': '/tiktok.png'
+      twitter: '/x.png',
+      instagram: '/instagram.png',
+      linkedin: '/link.svg',
+      facebook: '/fb.svg',
+      threads: '/threads.png',
+      bluesky: '/bluesky.png',
+      youtube: '/ytube.png',
+      tiktok: '/tiktok.png',
+      pinterest: '/pinterest.svg'
     }
-    
-    return iconMap[post.platform] || '/placeholder.svg'
+    const key = (post.platformIcon || post.platform || '').toLowerCase()
+    return iconMap[key] || '/placeholder.svg'
   }
 
   // Check if platform icon needs inversion
   const needsInversion = (platform: string) => {
-    return ['Twitter', 'Threads', 'TikTok'].includes(platform)
+    const p = (platform || '').toLowerCase()
+    return ['twitter', 'threads', 'tiktok'].includes(p)
   }
 
   const filteredPosts = filterAndSortPosts(draftPosts, draftSearchTerm, draftDateFilter, draftPlatformFilter)
@@ -197,53 +195,32 @@ export default function DraftsSection({
                     }`} 
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[#F5F5F7] text-sm font-medium truncate">
+                    <div className="text-white/90 truncate flex-1 min-w-0 max-w-[1050px]">
                       {post.content}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
-                        {post.platform}
-                      </Badge>
-                      <span className="text-xs text-gray-400">{post.time}</span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Right: action buttons */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onPublishDraft(post.id)
-                    }}
-                    className="text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                {/* Right: date and trash */}
+                <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                  <span className="text-sm text-white/80 whitespace-nowrap">{(() => {
+                    try {
+                      const d = new Date(post.time)
+                      if (!isNaN(d.getTime())) {
+                        return d.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                      }
+                      return String(post.time).split('T')[0] || String(post.time)
+                    } catch {
+                      return String(post.time)
+                    }
+                  })()}</span>
+                  <button
+                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/10"
+                    onClick={(e) => { e.stopPropagation(); onDeleteDraft(post.id) }}
+                    aria-label="Xóa bản nháp"
                   >
-                    Đăng
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEditDraft(post)
-                    }}
-                    className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
-                  >
-                    Sửa
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDeleteDraft(post.id)
-                    }}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                  >
-                    Xóa
-                  </Button>
+                    <img src="/Trash.svg" alt="Delete" className="opacity-80" style={{ width: 19, height: 19 }} />
+                  </button>
                 </div>
               </div>
             </div>

@@ -131,8 +131,7 @@ export default function PublishedSection({
     <div className="w-full max-w-none mx-4 mt-4 overflow-hidden h-full flex flex-col">
       <h2 className="text-2xl font-bold mb-6">Bài đã đăng</h2>
       
-      {/* Filter/Search controls (temporarily disabled) */}
-      {false && (
+      {/* Filter and Search Controls */}
       <div className="flex gap-4 mb-6">
         {/* Filter by Platform */}
         <div className="relative">
@@ -202,7 +201,6 @@ export default function PublishedSection({
           </div>
         </div>
       </div>
-      )}
       
       {/* Published Posts List */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
