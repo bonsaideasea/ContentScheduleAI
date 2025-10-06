@@ -284,7 +284,7 @@ export default function FailedSection({
                       />
                     </div>
                     <span className="text-xs whitespace-nowrap" style={{ 
-                      fontFamily: '"Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"', 
+                      fontFamily: '"Figtree", Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"', 
                       fontWeight: '600',
                       fontSize: '0.75rem',
                       color: 'rgba(255,255,255,0.9)'
